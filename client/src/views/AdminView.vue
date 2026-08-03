@@ -2,7 +2,9 @@
 import { computed, onMounted, ref } from 'vue';
 import AdminLogin from '../components/admin/AdminLogin.vue';
 import GallerySection from '../components/admin/GallerySection.vue';
+import GhostsSection from '../components/admin/GhostsSection.vue';
 import LivePilotage from '../components/admin/LivePilotage.vue';
+import MovementSection from '../components/admin/MovementSection.vue';
 import NetworkSection from '../components/admin/NetworkSection.vue';
 import { getConfig, logout } from '../composables/useAdminApi.js';
 import { useAdminConfig } from '../composables/useAdminConfig.js';
@@ -89,6 +91,18 @@ onMounted(checkAuth);
           @patch="patch"
           @config-replaced="setConfig"
           @action-error="(message) => (actionError = message)"
+        />
+        <MovementSection
+          v-if="config"
+          :config="config"
+          :pending-fields="pendingFields"
+          @patch="patch"
+        />
+        <GhostsSection
+          v-if="config"
+          :config="config"
+          :pending-fields="pendingFields"
+          @patch="patch"
         />
         <p>Autres sections à venir</p>
       </main>

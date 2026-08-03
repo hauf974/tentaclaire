@@ -55,11 +55,23 @@ Vérification manuelle de fin de lot (definition of done) : partie jouable de bo
 
 Vérification navigateur : chaque ticket visuel vérifié via Chromium piloté (conteneur `mcr.microsoft.com/playwright` en `--network host`, pas d'accès root sur `serveur_dev` pour installer Chromium nativement — voir DECISIONS.md). Restent à vérifier humainement : rendu à distance façon écran de bar, fluidité perçue des animations, scan QR Code avec un vrai smartphone, rendu sur un vrai écran 4K.
 
+## Lot 4 — Manette mobile
+
+| Ticket | Description | Statut | Date | Commit |
+|--------|--------------|--------|------|--------|
+| 4.1 | Session et routage d'écrans — useSocket étendu (join/sendInput/ready), PublicConfig complété | Terminé | 2026-08-03 | `06f57d9` |
+| 4.2 | Écran pseudo — champ, suffixage (J16) | Terminé | 2026-08-03 | `25fc0f3` |
+| 4.3 | Manette — croix de 4 boutons, vibration, ergonomie tactile | Terminé | 2026-08-03 | `4968965` |
+| 4.4 | Feedback cooldown et vote — anneau chaos, libellé démocratie | Terminé | 2026-08-03 | `a0584bb` |
+| 4.5 | États de phase — reset/paused/victory/defeat | Terminé | 2026-08-03 | `16f94cd` |
+| 4.6 | Reconnexion (vérification, aucun code nouveau) | Terminé | 2026-08-03 | `eedab1f` |
+
+Vérification navigateur : chaque ticket vérifié via Chromium piloté (voir DECISIONS.md Lot 3), y compris un aller-retour serveur↔écran réel (feed d'activité) pour confirmer la réception des `input`, un cycle complet de phases piloté par l'admin REST (victoire/défaite déclenchées avec grille réduite/torche large et timer court), et une coupure réseau réelle simulée en gelant le process serveur (`kill -STOP`/`-CONT`) ~50s pour observer le bandeau de reconnexion et la reprise de session. Restent à vérifier humainement : test réel sur iPhone Safari et Android Chrome en 4G contre le serveur de dev, ergonomie « pouce » (une main), coupure réseau réelle (mode avion) sur appareil physique — cf. « Définition de terminé » de la fiche du lot.
+
 ## Lots suivants
 
 | Lot | Contenu | Statut |
 |-----|---------|--------|
-| Lot 4 | Manette mobile | À faire |
 | Lot 5 | Dashboard admin | À faire |
 | Lot 6 | Thèmes visuels | À faire |
 | Lot 7 | E2E, finitions et déploiement | À faire |

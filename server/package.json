@@ -10,7 +10,10 @@
     "test": "echo \"no tests yet\""
   },
   "dependencies": {
-    "@tentaclaire/shared": "*"
+    "@fastify/static": "^10.1.2",
+    "@tentaclaire/shared": "*",
+    "fastify": "^5.11.2",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

@@ -68,10 +68,22 @@ Vérification navigateur : chaque ticket visuel vérifié via Chromium piloté (
 
 Vérification navigateur : chaque ticket vérifié via Chromium piloté (voir DECISIONS.md Lot 3), y compris un aller-retour serveur↔écran réel (feed d'activité) pour confirmer la réception des `input`, un cycle complet de phases piloté par l'admin REST (victoire/défaite déclenchées avec grille réduite/torche large et timer court), et une coupure réseau réelle simulée en gelant le process serveur (`kill -STOP`/`-CONT`) ~50s pour observer le bandeau de reconnexion et la reprise de session. Restent à vérifier humainement : test réel sur iPhone Safari et Android Chrome en 4G contre le serveur de dev, ergonomie « pouce » (une main), coupure réseau réelle (mode avion) sur appareil physique — cf. « Définition de terminé » de la fiche du lot.
 
+## Lot 5 — Dashboard admin
+
+| Ticket | Description | Statut | Date | Commit |
+|--------|--------------|--------|------|--------|
+| 5.1 | Authentification — login, déconnexion (route ajoutée), gate de session | Terminé | 2026-08-04 | `08fe8ee` |
+| 5.2 | Pilotage live — badge/timer/joueurs, Lancer/Pause/Réinitialiser, correctif C6 sur `launch()` | Terminé | 2026-08-04 | `d0e633d` |
+| 5.3 | Configuration réseau et partie — QR, durée du timer, `useAdminConfig` (débounce, pendingFields) | Terminé | 2026-08-04 | `3bc9b54` |
+| 5.4 | Galerie et grille — upload/activation/suppression, correctif recalcul `gridRows`, proxy `/uploads` | Terminé | 2026-08-04 | `2fa171b` |
+| 5.5 | Gameplay et fantômes — déplacements, torche, fantômes, collisions | Terminé | 2026-08-04 | `1f3ac11` |
+| 5.6 | Thème et finitions — cartes de thème, quadrillages, correctif rendu Lot 3 sur le quadrillage par case | Terminé | 2026-08-04 | `356f490` |
+
+Vérification navigateur : chaque ticket piloté depuis le dashboard lui-même (pas seulement `curl`), avec `/screen` ouvert en parallèle pour confirmer les effets croisés (QR, grille, quadrillage). Trois gaps pré-existants corrigés en cours de route (même catégorie que `qrUrl`/`PublicConfig` aux Lots 3-4) : `launch()` n'adoptait jamais de config (C6), `gridRows` ne se recalculait qu'à l'activation d'image, et un vrai bug de rendu Lot 3 où `showGridOnFog`/`showGridOnRevealed` n'étaient pas réellement indépendants (grille dessinée sous le brouillard visible en transparence). Restent à vérifier humainement : un exploitant néophyte configure et lance une partie complète sans documentation (jugement humain), utilisabilité tactile sur tablette réelle.
+
 ## Lots suivants
 
 | Lot | Contenu | Statut |
 |-----|---------|--------|
-| Lot 5 | Dashboard admin | À faire |
 | Lot 6 | Thèmes visuels | À faire |
 | Lot 7 | E2E, finitions et déploiement | À faire |

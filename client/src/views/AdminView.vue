@@ -6,6 +6,7 @@ import GhostsSection from '../components/admin/GhostsSection.vue';
 import LivePilotage from '../components/admin/LivePilotage.vue';
 import MovementSection from '../components/admin/MovementSection.vue';
 import NetworkSection from '../components/admin/NetworkSection.vue';
+import ThemeSection from '../components/admin/ThemeSection.vue';
 import { getConfig, logout } from '../composables/useAdminApi.js';
 import { useAdminConfig } from '../composables/useAdminConfig.js';
 import { useSocket } from '../composables/useSocket.js';
@@ -104,7 +105,11 @@ onMounted(checkAuth);
           :pending-fields="pendingFields"
           @patch="patch"
         />
-        <p>Autres sections à venir</p>
+        <ThemeSection
+          v-if="config"
+          :config="config"
+          @patch="patch"
+        />
       </main>
     </div>
   </div>

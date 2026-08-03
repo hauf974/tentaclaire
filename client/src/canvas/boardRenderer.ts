@@ -81,6 +81,59 @@ function drawGrid(ctx: CanvasRenderingContext2D, cols: number, rows: number, wid
   ctx.stroke();
 }
 
+/** Chemin couvrant les cases dont l'état (fogged/révélé, seuil sur l'alpha d'animation) satisfait `predicate`. */
+function cellsClipPath(
+  cols: number,
+  rows: number,
+  width: number,
+  height: number,
+  fog: FogAnimator,
+  predicate: (alpha: number) => boolean,
+): Path2D {
+  const cellW = width / cols;
+  const cellH = height / rows;
+  const path = new Path2D();
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const alpha = fog.getAlpha(row * cols + col);
+      if (!predicate(alpha)) continue;
+      path.rect(col * cellW, row * cellH, cellW + 1, cellH + 1);
+    }
+  }
+  return path;
+}
+
+/**
+ * Quadrillage : deux toggles indépendants par état de case (G5), dessiné
+ * au-dessus du brouillard (jamais masqué par sa transparence) et découpé
+ * par case via un chemin de clip — plutôt que deux tracés pleine grille
+ * empilés, dont celui du dessous restait visible en transparence à travers
+ * le brouillard malgré `showGridOnFog` désactivé.
+ */
+function drawGridByState(
+  ctx: CanvasRenderingContext2D,
+  cols: number,
+  rows: number,
+  width: number,
+  height: number,
+  fog: FogAnimator,
+  showGridOnFog: boolean,
+  showGridOnRevealed: boolean,
+): void {
+  if (showGridOnFog) {
+    ctx.save();
+    ctx.clip(cellsClipPath(cols, rows, width, height, fog, (alpha) => alpha > 0.5));
+    drawGrid(ctx, cols, rows, width, height);
+    ctx.restore();
+  }
+  if (showGridOnRevealed) {
+    ctx.save();
+    ctx.clip(cellsClipPath(cols, rows, width, height, fog, (alpha) => alpha <= 0.5));
+    drawGrid(ctx, cols, rows, width, height);
+    ctx.restore();
+  }
+}
+
 /** Personnage (D4) : smiley rond, lunettes rondes, torche dans la direction `facing`. */
 function drawCharacter(ctx: CanvasRenderingContext2D, cellW: number, cellH: number, sprite: CharacterSprite): void {
   if (!sprite.visible) return;
@@ -137,10 +190,6 @@ export function drawBoard(ctx: CanvasRenderingContext2D, width: number, height: 
     ctx.fillRect(0, 0, width, height);
   }
 
-  if (scene.showGridOnRevealed) {
-    drawGrid(ctx, scene.cols, scene.rows, width, height);
-  }
-
   const cellW = width / scene.cols;
   const cellH = height / scene.rows;
   const [r, g, b] = FOG_COLOR;
@@ -155,9 +204,7 @@ export function drawBoard(ctx: CanvasRenderingContext2D, width: number, height: 
     }
   }
 
-  if (scene.showGridOnFog) {
-    drawGrid(ctx, scene.cols, scene.rows, width, height);
-  }
+  drawGridByState(ctx, scene.cols, scene.rows, width, height, scene.fog, scene.showGridOnFog, scene.showGridOnRevealed);
 
   // Personnage et fantômes toujours visibles au-dessus du brouillard/quadrillage.
   for (const ghost of scene.ghosts) {

@@ -7,6 +7,7 @@ import type {
 import { type Socket, io as ioClient } from 'socket.io-client';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildServer, type BuiltServer } from './app.js';
+import { createTempUploadDir, removeTempDir } from './testSupport.js';
 
 function serverUrl(built: BuiltServer): string {
   const address = built.app.server.address();
@@ -23,17 +24,21 @@ function once<T>(socket: Socket, event: string): Promise<T> {
 }
 
 let built: BuiltServer | null = null;
+let uploadDir: string | null = null;
 const clients: Socket[] = [];
 
 afterEach(async () => {
   for (const client of clients.splice(0)) client.disconnect();
   await built?.stop();
   built = null;
+  if (uploadDir) removeTempDir(uploadDir);
+  uploadDir = null;
 });
 
 describe('protocole joueur et écran (ticket 2.3)', () => {
   it('deux joueurs jouent une mini-partie : join, doublon suffixé, input -> feed_add', async () => {
-    built = await buildServer({ config: { ...defaultGameConfig, gridCols: 6, gridRows: 6, ghostCount: 0 } });
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ config: { ...defaultGameConfig, gridCols: 6, gridRows: 6, ghostCount: 0 }, uploadDir });
     await built.app.listen({ port: 0, host: '127.0.0.1' });
     const url = serverUrl(built);
 
@@ -68,7 +73,8 @@ describe('protocole joueur et écran (ticket 2.3)', () => {
   });
 
   it('reconnexion par token : même pseudo restitué', async () => {
-    built = await buildServer({ config: defaultGameConfig });
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ config: defaultGameConfig, uploadDir });
     await built.app.listen({ port: 0, host: '127.0.0.1' });
     const url = serverUrl(built);
 
@@ -90,7 +96,8 @@ describe('protocole joueur et écran (ticket 2.3)', () => {
   });
 
   it('token expiré : session null au hello', async () => {
-    built = await buildServer({ config: defaultGameConfig });
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ config: defaultGameConfig, uploadDir });
     await built.app.listen({ port: 0, host: '127.0.0.1' });
     const url = serverUrl(built);
 

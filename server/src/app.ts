@@ -1,8 +1,10 @@
 import { existsSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import fastifyCookie from '@fastify/cookie';
+import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import type { GameConfig, GameEventType } from '@tentaclaire/shared';
 import { defaultGameConfig } from '@tentaclaire/shared';
@@ -15,6 +17,7 @@ import { createConfigStore, toPublicConfig, type ConfigStore } from './config.js
 import type { EngineEvent } from './engine/events.js';
 import { createGame, type GameEngine } from './engine/game.js';
 import { createFeed } from './feed.js';
+import { createImagesStore, registerImageRoutes, type ImagesStore } from './images.js';
 import { cloneGameState, computeStateDelta } from './realtime.js';
 import { createSessionStore, type SessionStore } from './sessions.js';
 import { registerSockets } from './sockets.js';
@@ -39,6 +42,7 @@ function isMarkerEvent(event: EngineEvent): event is EngineEvent & { type: GameE
 export interface BuildServerOptions {
   config?: GameConfig;
   adminPassword?: string;
+  uploadDir?: string;
 }
 
 export interface BuiltServer {
@@ -48,6 +52,7 @@ export interface BuiltServer {
   sessions: SessionStore;
   configStore: ConfigStore;
   adminAuth: AdminAuth;
+  imagesStore: ImagesStore;
   stop(): Promise<void>;
 }
 
@@ -61,9 +66,13 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
   const configStore = createConfigStore(options.config ?? defaultGameConfig);
   const adminPassword = options.adminPassword ?? process.env.ADMIN_PASSWORD ?? 'tentaclaire';
   const adminAuth = createAdminAuth(adminPassword);
+  const uploadDir = options.uploadDir ?? process.env.UPLOAD_DIR ?? '/data/uploads';
+  await mkdir(uploadDir, { recursive: true });
+
   const app = Fastify({ logger: true });
 
   await app.register(fastifyCookie);
+  await app.register(fastifyMultipart);
 
   app.get('/api/health', async () => ({ ok: true }));
 
@@ -73,6 +82,9 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
   if (existsSync(clientDist)) {
     await app.register(fastifyStatic, { root: clientDist });
   }
+  // Images uploadées, sous /uploads (decorateReply: false car fastifyStatic
+  // peut déjà avoir été enregistré ci-dessus pour le client).
+  await app.register(fastifyStatic, { root: uploadDir, prefix: '/uploads/', decorateReply: false });
 
   // `app.server` (le http.Server sous-jacent) existe dès la construction de
   // l'instance Fastify, avant même `app.ready()` — nécessaire ici car les
@@ -82,11 +94,16 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
   const game = createGame(configStore.get(), Math.random, Date.now);
   const sessions = createSessionStore();
   const feed = createFeed();
+  const imagesStore = createImagesStore();
 
   await registerAdminRoutes(app, { configStore, adminAuth, io });
+  await registerImageRoutes(app, { configStore, imagesStore, uploadDir });
 
   function getActiveImageUrl(): string | null {
-    return null; // ticket 2.5
+    const activeId = configStore.get().activeImageId;
+    if (!activeId) return null;
+    const image = imagesStore.get(activeId);
+    return image ? `/uploads/${image.filename}` : null;
   }
 
   registerSockets(io, {
@@ -133,5 +150,5 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
     await app.close();
   }
 
-  return { app, io, game, sessions, configStore, adminAuth, stop };
+  return { app, io, game, sessions, configStore, adminAuth, imagesStore, stop };
 }

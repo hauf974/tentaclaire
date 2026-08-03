@@ -3,6 +3,7 @@ import type { ConfigChangedPayload } from '@tentaclaire/shared';
 import { type Socket, io as ioClient } from 'socket.io-client';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildServer, type BuiltServer } from './app.js';
+import { createTempUploadDir, removeTempDir } from './testSupport.js';
 
 const ADMIN_PASSWORD = 'test-password';
 
@@ -25,23 +26,28 @@ async function login(built: BuiltServer): Promise<string> {
 }
 
 let built: BuiltServer | null = null;
+let uploadDir: string | null = null;
 const clients: Socket[] = [];
 
 afterEach(async () => {
   for (const client of clients.splice(0)) client.disconnect();
   await built?.stop();
   built = null;
+  if (uploadDir) removeTempDir(uploadDir);
+  uploadDir = null;
 });
 
 describe('authentification et config admin (ticket 2.4)', () => {
   it('accès refusé sans cookie', async () => {
-    built = await buildServer({ adminPassword: ADMIN_PASSWORD });
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ adminPassword: ADMIN_PASSWORD, uploadDir });
     const response = await built.app.inject({ method: 'GET', url: '/api/admin/config' });
     expect(response.statusCode).toBe(401);
   });
 
   it('login refusé avec un mauvais mot de passe', async () => {
-    built = await buildServer({ adminPassword: ADMIN_PASSWORD });
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ adminPassword: ADMIN_PASSWORD, uploadDir });
     const response = await built.app.inject({
       method: 'POST',
       url: '/api/admin/login',
@@ -52,7 +58,8 @@ describe('authentification et config admin (ticket 2.4)', () => {
   });
 
   it('login accepté pose un cookie qui donne accès à /config', async () => {
-    built = await buildServer({ adminPassword: ADMIN_PASSWORD });
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ adminPassword: ADMIN_PASSWORD, uploadDir });
     const cookie = await login(built);
 
     const response = await built.app.inject({
@@ -65,7 +72,8 @@ describe('authentification et config admin (ticket 2.4)', () => {
   });
 
   it('PUT /config rejette une valeur hors bornes (400), rien ne change', async () => {
-    built = await buildServer({ adminPassword: ADMIN_PASSWORD });
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ adminPassword: ADMIN_PASSWORD, uploadDir });
     const cookie = await login(built);
 
     const response = await built.app.inject({
@@ -79,7 +87,12 @@ describe('authentification et config admin (ticket 2.4)', () => {
   });
 
   it('le thème est appliqué à chaud (config_changed diffusé), le nombre de fantômes seulement au reset', async () => {
-    built = await buildServer({ adminPassword: ADMIN_PASSWORD, config: { ...defaultGameConfig, ghostCount: 3 } });
+    uploadDir = createTempUploadDir();
+    built = await buildServer({
+      adminPassword: ADMIN_PASSWORD,
+      config: { ...defaultGameConfig, ghostCount: 3 },
+      uploadDir,
+    });
     await built.app.listen({ port: 0, host: '127.0.0.1' });
     const cookie = await login(built);
 

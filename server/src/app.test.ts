@@ -2,6 +2,7 @@ import { defaultGameConfig } from '@tentaclaire/shared';
 import { type Socket, io as ioClient } from 'socket.io-client';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildServer, type BuiltServer } from './app.js';
+import { createTempUploadDir, removeTempDir } from './testSupport.js';
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -15,17 +16,21 @@ function serverUrl(built: BuiltServer): string {
 
 let built: BuiltServer | null = null;
 let client: Socket | null = null;
+let uploadDir: string | null = null;
 
 afterEach(async () => {
   client?.disconnect();
   client = null;
   await built?.stop();
   built = null;
+  if (uploadDir) removeTempDir(uploadDir);
+  uploadDir = null;
 });
 
 describe('boucle serveur (ticket 2.1)', () => {
   it("aucun delta n'est émis quand rien ne bouge (phase idle)", async () => {
-    built = await buildServer({ config: { ...defaultGameConfig, ghostCount: 0 } });
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ config: { ...defaultGameConfig, ghostCount: 0 }, uploadDir });
     await built.app.listen({ port: 0, host: '127.0.0.1' });
 
     const deltas: unknown[] = [];
@@ -44,7 +49,8 @@ describe('boucle serveur (ticket 2.1)', () => {
   });
 
   it('le timer diffusé décroît correctement une fois la partie lancée', async () => {
-    built = await buildServer({ config: { ...defaultGameConfig, ghostCount: 0, timerSeconds: 300 } });
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ config: { ...defaultGameConfig, ghostCount: 0, timerSeconds: 300 }, uploadDir });
     await built.app.listen({ port: 0, host: '127.0.0.1' });
 
     const deltas: { timerRemainingMs?: number }[] = [];

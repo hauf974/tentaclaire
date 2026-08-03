@@ -54,6 +54,8 @@ export interface ConfigStore {
   get(): GameConfig;
   /** Valide puis applique `patch` atomiquement (tout ou rien). `activeImageId` est ignoré : géré par les routes /images (ticket 2.5). */
   update(patch: Record<string, unknown>): ConfigUpdateResult;
+  /** Réservé aux routes /images (galerie) : `activeImageId` n'est pas exposé via `update()`. */
+  setActiveImage(imageId: string | null): void;
 }
 
 export function createConfigStore(initial: GameConfig = defaultGameConfig): ConfigStore {
@@ -87,6 +89,10 @@ export function createConfigStore(initial: GameConfig = defaultGameConfig): Conf
       config = next;
 
       return { ok: true, errors: [], immediateChange };
+    },
+
+    setActiveImage(imageId) {
+      config = { ...config, activeImageId: imageId };
     },
   };
 }

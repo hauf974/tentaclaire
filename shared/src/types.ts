@@ -45,6 +45,8 @@ export type PublicConfig = Pick<
   | 'showGridOnFog'
   | 'showGridOnRevealed'
   | 'movementMode'
+  | 'chaosCooldownMs'
+  | 'democracyWindowMs'
   | 'torchRadius'
   | 'theme'
 >;

@@ -1,11 +1,13 @@
 import type {
   ClientRole,
   ConfigChangedPayload,
+  Direction,
   FeedAddPayload,
   FeedEntry,
   FullSnapshot,
   GameState,
   HelloAckPayload,
+  JoinAckPayload,
   PublicConfig,
   StateDeltaPayload,
 } from '@tentaclaire/shared';
@@ -15,17 +17,24 @@ import { ref, type Ref } from 'vue';
 import { applyStateDelta } from '../canvas/applyStateDelta.js';
 
 const FEED_MAX = 50;
+export const TOKEN_STORAGE_KEY = 'tentaclaire_token';
 
 export interface UseSocketResult {
   socket: Socket;
   connected: Ref<boolean>;
   /** Vrai entre une déconnexion et la reconnexion suivante (bandeau « Reconnexion… »). */
   reconnecting: Ref<boolean>;
+  /** Vrai après le premier `hello_ack`/`snapshot` reçu (distingue « connexion en cours » de « connecté, sans session »). */
+  ready: Ref<boolean>;
   state: Ref<GameState | null>;
   config: Ref<PublicConfig | null>;
   activeImageUrl: Ref<string | null>;
   feed: Ref<FeedEntry[]>;
   session: Ref<{ token: string; pseudo: string } | null>;
+  /** Rôle `player` uniquement : demande à rejoindre la partie avec ce pseudo. */
+  join(pseudo: string): void;
+  /** Rôle `player` uniquement : envoie une direction. */
+  sendInput(direction: Direction): void;
 }
 
 /**
@@ -39,6 +48,7 @@ export function useSocket(role: ClientRole, token?: string): UseSocketResult {
 
   const connected = ref(false);
   const reconnecting = ref(false);
+  const ready = ref(false);
   const state = ref<GameState | null>(null);
   const config = ref<PublicConfig | null>(null);
   const activeImageUrl = ref<string | null>(null);
@@ -55,7 +65,7 @@ export function useSocket(role: ClientRole, token?: string): UseSocketResult {
   socket.on('connect', () => {
     connected.value = true;
     reconnecting.value = false;
-    socket.emit('hello', { role, token });
+    socket.emit('hello', { role, token: session.value?.token ?? token });
   });
 
   socket.on('disconnect', () => {
@@ -64,12 +74,21 @@ export function useSocket(role: ClientRole, token?: string): UseSocketResult {
   });
 
   socket.on('hello_ack', (payload: HelloAckPayload) => {
+    ready.value = true;
     session.value = payload.session ?? null;
     applySnapshot(payload.snapshot);
   });
 
   socket.on('snapshot', (snapshot: FullSnapshot) => {
+    ready.value = true;
     applySnapshot(snapshot);
+  });
+
+  socket.on('join_ack', (payload: JoinAckPayload) => {
+    session.value = { token: payload.token, pseudo: payload.pseudo };
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, payload.token);
+    }
   });
 
   socket.on('state_delta', (delta: StateDeltaPayload) => {
@@ -84,5 +103,25 @@ export function useSocket(role: ClientRole, token?: string): UseSocketResult {
     config.value = payload.config;
   });
 
-  return { socket, connected, reconnecting, state, config, activeImageUrl, feed, session };
+  function join(pseudo: string): void {
+    socket.emit('join', { pseudo });
+  }
+
+  function sendInput(direction: Direction): void {
+    socket.emit('input', { direction });
+  }
+
+  return {
+    socket,
+    connected,
+    reconnecting,
+    ready,
+    state,
+    config,
+    activeImageUrl,
+    feed,
+    session,
+    join,
+    sendInput,
+  };
 }

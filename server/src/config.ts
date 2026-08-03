@@ -105,6 +105,8 @@ export function toPublicConfig(config: GameConfig): PublicConfig {
     showGridOnFog: config.showGridOnFog,
     showGridOnRevealed: config.showGridOnRevealed,
     movementMode: config.movementMode,
+    chaosCooldownMs: config.chaosCooldownMs,
+    democracyWindowMs: config.democracyWindowMs,
     torchRadius: config.torchRadius,
     theme: config.theme,
   };

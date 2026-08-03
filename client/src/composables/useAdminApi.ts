@@ -10,11 +10,11 @@ export class AdminApiError extends Error {
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const isFormData = init?.body instanceof FormData;
+  const hasJsonBody = typeof init?.body === 'string';
   const response = await fetch(url, {
     credentials: 'include',
     ...init,
-    headers: isFormData ? init?.headers : { 'Content-Type': 'application/json', ...init?.headers },
+    headers: hasJsonBody ? { 'Content-Type': 'application/json', ...init?.headers } : init?.headers,
   });
 
   if (!response.ok) {

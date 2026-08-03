@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import AdminLogin from '../components/admin/AdminLogin.vue';
+import LivePilotage from '../components/admin/LivePilotage.vue';
 import { getConfig, logout } from '../composables/useAdminApi.js';
+import { useSocket } from '../composables/useSocket.js';
 
 const authenticated = ref<boolean | null>(null);
+const actionError = ref<string | null>(null);
+
+const { state } = useSocket('admin');
 
 async function checkAuth(): Promise<void> {
   try {
@@ -49,7 +54,20 @@ onMounted(checkAuth);
         </button>
       </header>
       <main class="sections">
-        <p>Tableau de bord (à venir)</p>
+        <p
+          v-if="actionError"
+          class="action-error"
+        >
+          {{ actionError }}
+        </p>
+        <LivePilotage
+          v-if="state"
+          :phase="state.phase"
+          :timer-remaining-ms="state.timerRemainingMs"
+          :player-count="state.playerCount"
+          @action-error="(message) => (actionError = message)"
+        />
+        <p>Autres sections à venir</p>
       </main>
     </div>
   </div>
@@ -88,6 +106,14 @@ onMounted(checkAuth);
   border: 1px solid rgba(255, 255, 255, 0.3);
   background: transparent;
   color: white;
+}
+
+.action-error {
+  background: #fde0e0;
+  color: #a83232;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  margin: 0;
 }
 
 .sections {

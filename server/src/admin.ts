@@ -79,7 +79,7 @@ export async function registerAdminRoutes(app: FastifyInstance, deps: AdminRoute
   });
 
   app.post('/api/admin/game/launch', async () => {
-    deps.game.launch();
+    deps.game.launch(deps.configStore.get());
     return { ok: true };
   });
 

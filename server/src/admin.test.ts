@@ -130,6 +130,28 @@ describe('authentification et config admin (ticket 2.4)', () => {
     expect(built.game.getState().ghosts).toHaveLength(10);
   });
 
+  it("Lancer depuis 'reset' adopte un changement de config fait après Réinitialiser (ticket 5.2, C6)", async () => {
+    uploadDir = createTempUploadDir();
+    built = await buildServer({
+      adminPassword: ADMIN_PASSWORD,
+      config: { ...defaultGameConfig, gridCols: 6, gridRows: 6, ghostCount: 0, chaosCooldownMs: 500 },
+      uploadDir,
+    });
+    const cookie = await login(built);
+
+    await built.app.inject({ method: 'POST', url: '/api/admin/game/reset', headers: { cookie } });
+    await built.app.inject({
+      method: 'PUT',
+      url: '/api/admin/config',
+      headers: { cookie },
+      payload: { chaosCooldownMs: 5000 },
+    });
+    await built.app.inject({ method: 'POST', url: '/api/admin/game/launch', headers: { cookie } });
+
+    built.game.handleInput('up', 'Alex');
+    expect(built.game.getState().cooldownRemainingMs).toBeGreaterThan(4000);
+  });
+
   it('logout invalide le cookie (ticket 5.1)', async () => {
     uploadDir = createTempUploadDir();
     built = await buildServer({ adminPassword: ADMIN_PASSWORD, uploadDir });

@@ -65,6 +65,22 @@ describe('createGame — phases et timer', () => {
     expect(game.getState().phase).toBe('running');
   });
 
+  it("launch(config) depuis 'reset' adopte le nouveau config (C6, ex. Réinitialiser puis modifier puis Lancer sans re-réinitialiser)", () => {
+    game.reset(config({ chaosCooldownMs: 500 }));
+    game.launch(config({ chaosCooldownMs: 5000 }));
+    game.handleInput('up', 'Alex');
+    expect(game.getState().cooldownRemainingMs).toBeGreaterThan(4000);
+  });
+
+  it("launch(config) depuis 'paused' n'adopte PAS le nouveau config (ne perturbe pas une reprise en cours de partie)", () => {
+    game.reset(config({ chaosCooldownMs: 500 }));
+    game.launch();
+    game.pause();
+    game.launch(config({ chaosCooldownMs: 5000 }));
+    game.handleInput('up', 'Alex');
+    expect(game.getState().cooldownRemainingMs).toBeLessThanOrEqual(500);
+  });
+
   it("pause() depuis 'running' passe en 'paused' et émet 'paused'", () => {
     game.reset();
     game.launch();

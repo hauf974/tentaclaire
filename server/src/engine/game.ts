@@ -15,8 +15,8 @@ export interface GameEngine {
   tick(nowMs: number): void;
   /** Entrée d'un joueur (`pseudo`, pour le feed). Ignorée si la partie n'est pas `running`. */
   handleInput(direction: Direction, pseudo: string): void;
-  /** `reset|paused -> running`. Ignoré depuis toute autre phase. */
-  launch(): void;
+  /** `reset|paused -> running`. Ignoré depuis toute autre phase. Depuis `reset`, adopte `config` si fourni (C6) — jamais depuis `paused`, pour ne pas perturber une reprise en cours de partie. */
+  launch(config?: GameConfig): void;
   /** `running -> paused`. Ignoré depuis toute autre phase. */
   pause(): void;
   /** Depuis n'importe quelle phase -> `reset`. Adopte `config` si fourni (C6). */
@@ -277,8 +277,9 @@ export function createGame(
       }
     },
 
-    launch(): void {
+    launch(newConfig?: GameConfig): void {
       if (state.phase === 'reset') {
+        if (newConfig) config = newConfig;
         state.phase = 'running';
       } else if (state.phase === 'paused') {
         state.phase = 'running';

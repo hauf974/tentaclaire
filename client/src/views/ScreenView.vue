@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import FeedPanel from '../components/FeedPanel.vue';
 import PhaseOverlay from '../components/PhaseOverlay.vue';
 import QrPanel from '../components/QrPanel.vue';
 import TimerOverlay from '../components/TimerOverlay.vue';
+import { useActivityFeed } from '../composables/useActivityFeed.js';
 import { useBoardCanvas } from '../composables/useBoardCanvas.js';
 import { useSocket } from '../composables/useSocket.js';
 
-const { connected, reconnecting, state, config, activeImageUrl } = useSocket('screen');
+const { socket, connected, reconnecting, state, config, activeImageUrl, feed } = useSocket('screen');
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const boardContainerRef = ref<HTMLElement | null>(null);
 useBoardCanvas(canvasRef, boardContainerRef, state, config, activeImageUrl);
+
+const phase = computed(() => state.value?.phase);
+const activityEntries = useActivityFeed(socket, feed, phase);
 </script>
 
 <template>
@@ -29,7 +34,7 @@ useBoardCanvas(canvasRef, boardContainerRef, state, config, activeImageUrl);
           :qr-url="config.qrUrl"
           :player-count="state?.playerCount ?? 0"
         />
-        <!-- Feed d'activité (ticket 3.6) -->
+        <FeedPanel :entries="activityEntries" />
       </aside>
 
       <div

@@ -14,11 +14,23 @@ Tableau de bord du développement de Tentaclaire, tenu à jour ticket par ticket
 | 0.6 | Docker dev et test | Terminé | 2026-08-03 | `916bfc4` |
 | 0.7 | Documentation racine | Terminé | 2026-08-03 | `643e8e3` |
 
+## Lot 1 — Moteur de jeu
+
+| Ticket | Description | Statut | Date | Commit |
+|--------|--------------|--------|------|--------|
+| 1.1 | Grille — index, case de départ, torche, révélation | Terminé | 2026-08-03 | `0e6f85c` |
+| 1.2 | Phases et timer | Terminé | 2026-08-03 | `6e66c43` |
+| 1.3 | Déplacement mode Chaos | Terminé | 2026-08-03 | `0a35864` |
+| 1.4 | Déplacement mode Démocratie | Terminé | 2026-08-03 | `069dce0` |
+| 1.5 | Fantômes — déplacement et recouvrement | Terminé | 2026-08-03 | `a913b22` |
+| 1.6 | Fantômes — IA traque | Terminé | 2026-08-03 | `d62720b` |
+| 1.7 | Collisions et invincibilité | Terminé | 2026-08-03 | `26e75f1` |
+| 1.8 | Victoire, intégration, couverture (100 % lignes sur `engine/`) | Terminé | 2026-08-03 | `4ef1191` |
+
 ## Lots suivants
 
 | Lot | Contenu | Statut |
 |-----|---------|--------|
-| Lot 1 | Moteur de jeu | À faire |
 | Lot 2 | Serveur temps réel | À faire |
 | Lot 3 | Écran géant | À faire |
 | Lot 4 | Manette mobile | À faire |

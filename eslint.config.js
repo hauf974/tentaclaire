@@ -18,6 +18,9 @@ export default tseslint.config(
   {
     rules: {
       'vue/multi-word-component-names': 'off',
+      // Paramètres d'injection (rng, horloge, config) utilisés progressivement
+      // au fil des tickets : seules les variables locales inutilisées comptent.
+      '@typescript-eslint/no-unused-vars': ['error', { args: 'none' }],
     },
   },
 );

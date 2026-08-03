@@ -2,12 +2,16 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
-import type { GameConfig, GameEventType, PublicConfig } from '@tentaclaire/shared';
+import type { GameConfig, GameEventType } from '@tentaclaire/shared';
 import { defaultGameConfig } from '@tentaclaire/shared';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { Server as SocketIOServer } from 'socket.io';
 
+import { createAdminAuth, type AdminAuth } from './adminAuth.js';
+import { registerAdminRoutes } from './admin.js';
+import { createConfigStore, toPublicConfig, type ConfigStore } from './config.js';
 import type { EngineEvent } from './engine/events.js';
 import { createGame, type GameEngine } from './engine/game.js';
 import { createFeed } from './feed.js';
@@ -34,6 +38,7 @@ function isMarkerEvent(event: EngineEvent): event is EngineEvent & { type: GameE
 
 export interface BuildServerOptions {
   config?: GameConfig;
+  adminPassword?: string;
 }
 
 export interface BuiltServer {
@@ -41,6 +46,8 @@ export interface BuiltServer {
   io: SocketIOServer;
   game: GameEngine;
   sessions: SessionStore;
+  configStore: ConfigStore;
+  adminAuth: AdminAuth;
   stop(): Promise<void>;
 }
 
@@ -51,8 +58,12 @@ export interface BuiltServer {
  * écoutent sur un port éphémère (`{ port: 0 }`), fermé via `stop()`.
  */
 export async function buildServer(options: BuildServerOptions = {}): Promise<BuiltServer> {
-  const config = options.config ?? defaultGameConfig;
+  const configStore = createConfigStore(options.config ?? defaultGameConfig);
+  const adminPassword = options.adminPassword ?? process.env.ADMIN_PASSWORD ?? 'tentaclaire';
+  const adminAuth = createAdminAuth(adminPassword);
   const app = Fastify({ logger: true });
+
+  await app.register(fastifyCookie);
 
   app.get('/api/health', async () => ({ ok: true }));
 
@@ -63,31 +74,30 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
     await app.register(fastifyStatic, { root: clientDist });
   }
 
-  await app.ready();
-
+  // `app.server` (le http.Server sous-jacent) existe dès la construction de
+  // l'instance Fastify, avant même `app.ready()` — nécessaire ici car les
+  // routes admin (enregistrées avant `ready()`) ont besoin de `io` pour
+  // diffuser `config_changed`.
   const io = new SocketIOServer(app.server);
-  const game = createGame(config, Math.random, Date.now);
+  const game = createGame(configStore.get(), Math.random, Date.now);
   const sessions = createSessionStore();
   const feed = createFeed();
 
-  // Dérivé de la config du moteur pour l'instant ; ticket 2.4 branchera la
-  // config admin mutable, ticket 2.5 la galerie d'images.
-  function getPublicConfig(): PublicConfig {
-    return {
-      gridCols: config.gridCols,
-      gridRows: config.gridRows,
-      showGridOnFog: config.showGridOnFog,
-      showGridOnRevealed: config.showGridOnRevealed,
-      movementMode: config.movementMode,
-      torchRadius: config.torchRadius,
-      theme: config.theme,
-    };
-  }
+  await registerAdminRoutes(app, { configStore, adminAuth, io });
+
   function getActiveImageUrl(): string | null {
-    return null;
+    return null; // ticket 2.5
   }
 
-  registerSockets(io, { game, sessions, feed, getPublicConfig, getActiveImageUrl });
+  registerSockets(io, {
+    game,
+    sessions,
+    feed,
+    getPublicConfig: () => toPublicConfig(configStore.get()),
+    getActiveImageUrl,
+  });
+
+  await app.ready();
 
   let lastBroadcast: ReturnType<GameEngine['getState']> | null = null;
 
@@ -123,5 +133,5 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
     await app.close();
   }
 
-  return { app, io, game, sessions, stop };
+  return { app, io, game, sessions, configStore, adminAuth, stop };
 }

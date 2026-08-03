@@ -10,6 +10,7 @@
     "test": "echo \"no tests yet\""
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.2",
     "@fastify/static": "^10.1.2",
     "@tentaclaire/shared": "*",
     "fastify": "^5.11.2",

@@ -1,3 +1,5 @@
+name: tentaclaire
+
 services:
   app:
     build: .

@@ -1,0 +1,26 @@
+name: tentaclaire-dev
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    env_file: .env
+    environment:
+      - SERVER_PORT=3000
+    ports:
+      - "3000:3000" # serveur (API + WebSocket)
+      - "5173:5173" # client Vite (HMR)
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/shared/node_modules
+      - /app/server/node_modules
+      - /app/client/node_modules
+      - uploads:/data/uploads
+    command: >
+      sh -c "npm run build -w shared &&
+      (npm run dev -w shared & npm run dev -w server & npm run dev -w client -- --host 0.0.0.0 & wait)"
+
+volumes:
+  uploads:

@@ -15,11 +15,13 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts",
     "dev:server": "npm run dev -w server",
     "dev:client": "npm run dev -w client"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
     "eslint": "^10.8.0",
     "eslint-plugin-vue": "^10.10.0",
     "prettier": "^3.9.6",

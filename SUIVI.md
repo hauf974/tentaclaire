@@ -12,7 +12,7 @@ Tableau de bord du développement de Tentaclaire, tenu à jour ticket par ticket
 | 0.4 | Squelette client Vue Router | Terminé | 2026-08-03 | `8825238` |
 | 0.5 | Docker exploitation | Terminé | 2026-08-03 | `122f409` |
 | 0.6 | Docker dev et test | Terminé | 2026-08-03 | `916bfc4` |
-| 0.7 | Documentation racine | Terminé | 2026-08-03 | *(ce commit)* |
+| 0.7 | Documentation racine | Terminé | 2026-08-03 | `643e8e3` |
 
 ## Lots suivants
 

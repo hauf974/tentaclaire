@@ -1,13 +1,26 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue';
+import PseudoScreen from '../components/PseudoScreen.vue';
 import { TOKEN_STORAGE_KEY, useSocket } from '../composables/useSocket.js';
 
 const existingToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) ?? undefined;
 
 const { reconnecting, ready, session, join } = useSocket('player', existingToken);
 
+const pendingPseudo = ref<string | null>(null);
+const suffixNotice = ref<string | null>(null);
+
 function handleJoin(pseudo: string): void {
+  pendingPseudo.value = pseudo;
+  suffixNotice.value = null;
   join(pseudo);
 }
+
+watch(session, (value, previous) => {
+  if (value && !previous && pendingPseudo.value && value.pseudo !== pendingPseudo.value) {
+    suffixNotice.value = `Ce pseudo était pris, tu es ${value.pseudo} !`;
+  }
+});
 </script>
 
 <template>
@@ -25,23 +38,21 @@ function handleJoin(pseudo: string): void {
     >
       Connexion…
     </p>
-    <div
+    <PseudoScreen
       v-else-if="!session"
-      class="pseudo-placeholder"
-    >
-      Écran pseudo (à venir)
-      <button
-        type="button"
-        @click="handleJoin('Testeur')"
-      >
-        Rejoindre
-      </button>
-    </div>
+      @join="handleJoin"
+    />
     <div
       v-else
       class="pad-placeholder"
     >
       <header>{{ session.pseudo }}</header>
+      <p
+        v-if="suffixNotice"
+        class="suffix-notice"
+      >
+        {{ suffixNotice }}
+      </p>
       Manette (à venir)
     </div>
   </div>
@@ -62,6 +73,11 @@ function handleJoin(pseudo: string): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+.suffix-notice {
+  color: #ffcf6b;
+  font-size: 0.9rem;
 }
 
 .reconnect-banner {

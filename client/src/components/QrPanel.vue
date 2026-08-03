@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import QRCode from 'qrcode';
 import { onMounted, ref, watch } from 'vue';
+import { renderQrCode } from '../utils/renderQrCode.js';
 
 const props = defineProps<{ qrUrl: string; playerCount: number }>();
 
@@ -9,11 +9,7 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 async function render(): Promise<void> {
   const canvas = canvasRef.value;
   if (!canvas || !props.qrUrl) return;
-  await QRCode.toCanvas(canvas, props.qrUrl, {
-    width: 200,
-    margin: 1,
-    color: { dark: '#10131a', light: '#ffffff' },
-  });
+  await renderQrCode(canvas, props.qrUrl);
 }
 
 watch(() => props.qrUrl, render);

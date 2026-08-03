@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import AdminLogin from '../components/admin/AdminLogin.vue';
 import LivePilotage from '../components/admin/LivePilotage.vue';
+import NetworkSection from '../components/admin/NetworkSection.vue';
 import { getConfig, logout } from '../composables/useAdminApi.js';
+import { useAdminConfig } from '../composables/useAdminConfig.js';
 import { useSocket } from '../composables/useSocket.js';
 
 const authenticated = ref<boolean | null>(null);
 const actionError = ref<string | null>(null);
 
 const { state } = useSocket('admin');
+const phase = computed(() => state.value?.phase);
+const { config, saved, pendingFields, patch, load: loadConfig } = useAdminConfig(phase);
 
 async function checkAuth(): Promise<void> {
   try {
     await getConfig();
     authenticated.value = true;
+    void loadConfig();
   } catch {
     authenticated.value = false;
   }
@@ -45,6 +50,10 @@ onMounted(checkAuth);
     >
       <header class="top-bar">
         <h1>Tentaclaire — Administration</h1>
+        <span
+          v-if="saved"
+          class="saved-flash"
+        >Enregistré ✓</span>
         <button
           type="button"
           class="logout"
@@ -66,6 +75,12 @@ onMounted(checkAuth);
           :timer-remaining-ms="state.timerRemainingMs"
           :player-count="state.playerCount"
           @action-error="(message) => (actionError = message)"
+        />
+        <NetworkSection
+          v-if="config"
+          :config="config"
+          :pending-fields="pendingFields"
+          @patch="patch"
         />
         <p>Autres sections à venir</p>
       </main>
@@ -98,6 +113,14 @@ onMounted(checkAuth);
 .top-bar h1 {
   font-size: 1.1rem;
   margin: 0;
+  margin-right: auto;
+}
+
+.saved-flash {
+  color: #6bdc8e;
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-right: 1rem;
 }
 
 .logout {

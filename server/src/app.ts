@@ -107,6 +107,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
     game,
     sessions,
     feed,
+    log: app.log,
     getPublicConfig: () => toPublicConfig(configStore.get()),
     getActiveImageUrl,
   };
@@ -139,6 +140,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
 
     for (const event of game.drainEvents()) {
       if (isMarkerEvent(event)) {
+        app.log.info({ type: event.type }, 'transition de phase');
         io.emit('game_event', { type: event.type });
       } else if (event.type === 'input_accepted') {
         const entry = feed.add(event.pseudo, event.direction, Date.now());

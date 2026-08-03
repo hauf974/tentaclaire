@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import DirectionPad from '../components/DirectionPad.vue';
 import PseudoScreen from '../components/PseudoScreen.vue';
 import { TOKEN_STORAGE_KEY, useSocket } from '../composables/useSocket.js';
 
 const existingToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) ?? undefined;
 
-const { reconnecting, ready, session, join } = useSocket('player', existingToken);
+const { connected, reconnecting, ready, session, join, sendInput } = useSocket('player', existingToken);
 
 const pendingPseudo = ref<string | null>(null);
 const suffixNotice = ref<string | null>(null);
@@ -44,16 +45,22 @@ watch(session, (value, previous) => {
     />
     <div
       v-else
-      class="pad-placeholder"
+      class="controller"
     >
-      <header>{{ session.pseudo }}</header>
+      <header class="header">
+        <span class="pseudo">{{ session.pseudo }}</span>
+        <span
+          class="dot"
+          :class="{ connected }"
+        />
+      </header>
       <p
         v-if="suffixNotice"
         class="suffix-notice"
       >
         {{ suffixNotice }}
       </p>
-      Manette (à venir)
+      <DirectionPad @input="sendInput" />
     </div>
   </div>
 </template>
@@ -73,6 +80,35 @@ watch(session, (value, previous) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+.controller {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #a33;
+}
+
+.dot.connected {
+  background: #4caf50;
 }
 
 .suffix-notice {

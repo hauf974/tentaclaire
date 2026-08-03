@@ -1,5 +1,6 @@
 import type { CharacterState, Direction, GameConfig, GameState, GhostState, Position } from '@tentaclaire/shared';
 
+import { applyCollision, checkCollision } from './collisions.js';
 import type { EngineEvent } from './events.js';
 import { chooseNextTarget, spawnGhosts } from './ghosts.js';
 import { cellIndex, createEmptyRevealed, setCells, startingPosition, torchCells } from './grid.js';
@@ -110,10 +111,41 @@ export function createGame(
     }));
   }
 
+  /**
+   * Vérifie une collision personnage/fantôme (J10) et l'applique selon le mode
+   * configuré. Ignorée pendant l'invincibilité (J11). Appelée à chaque
+   * déplacement de l'un ou l'autre (Gameplay §6).
+   */
+  function checkAndResolveCollision(): void {
+    if (state.character.invincibleUntil !== null && now() < state.character.invincibleUntil) return;
+    if (!checkCollision(state.character, state.ghosts)) return;
+    if (config.collisionMode === 'passif') return;
+
+    const startPos = startingPosition(state.cols, state.rows);
+    const startIndices = torchCells(startPos, config.torchRadius, state.cols, state.rows).map((p) =>
+      cellIndex(p.col, p.row, state.cols),
+    );
+    const outcome = applyCollision(
+      config.collisionMode,
+      state.character,
+      startPos,
+      state.revealed,
+      startIndices,
+      now(),
+    );
+
+    events.push({ type: 'character_moved', character: cloneCharacter(state.character) });
+    const changes = [
+      ...outcome.maskedIndices.map((index) => ({ index, revealed: false })),
+      ...outcome.revealedIndices.map((index) => ({ index, revealed: true })),
+    ];
+    if (changes.length > 0) events.push({ type: 'revealed_changed', changes });
+    if (outcome.died) events.push({ type: 'character_died' });
+  }
+
   /** Avance tous les fantômes de `elapsedMs`, gère recouvrement et changement de cible. */
   function advanceGhosts(elapsedMs: number): void {
     if (elapsedMs <= 0) return;
-    const characterIndex = cellIndex(state.character.pos.col, state.character.pos.row, state.cols);
 
     for (const ghost of state.ghosts) {
       if (ghost.target === null) continue;
@@ -124,12 +156,15 @@ export function createGame(
         const departedIndex = cellIndex(ghost.pos.col, ghost.pos.row, state.cols);
         ghost.pos = ghost.target;
 
+        const characterIndex = cellIndex(state.character.pos.col, state.character.pos.row, state.cols);
         if (departedIndex !== characterIndex) {
           const changed = setCells(state.revealed, [departedIndex], false);
           if (changed.length > 0) {
             events.push({ type: 'revealed_changed', changes: [{ index: departedIndex, revealed: false }] });
           }
         }
+
+        checkAndResolveCollision();
 
         ghost.target = chooseNextTarget(
           ghost.pos,
@@ -162,6 +197,8 @@ export function createGame(
         changes: revealedChanges.map((index) => ({ index, revealed: true })),
       });
     }
+
+    checkAndResolveCollision();
   }
 
   // État initial `idle` (avant tout reset explicite) : plateau valide mais inerte,
@@ -174,6 +211,10 @@ export function createGame(
       lastTickAt = nowMs;
 
       if (state.phase !== 'running') return;
+
+      if (state.character.invincibleUntil !== null && nowMs >= state.character.invincibleUntil) {
+        state.character.invincibleUntil = null;
+      }
 
       state.timerRemainingMs = Math.max(0, state.timerRemainingMs - elapsed);
       if (state.timerRemainingMs === 0) {

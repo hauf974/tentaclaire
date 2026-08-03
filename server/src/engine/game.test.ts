@@ -1,6 +1,7 @@
 import { defaultGameConfig, type GameConfig } from '@tentaclaire/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createGame, type GameEngine } from './game.js';
+import { cellIndex } from './grid.js';
 
 function config(overrides: Partial<GameConfig> = {}): GameConfig {
   // ghostCount: 0 par défaut pour ces tests (phases/chaos/démocratie) : les
@@ -497,5 +498,92 @@ describe('createGame — fantômes : déplacement et recouvrement (J7, J8)', () 
     clock = 1000;
     game.tick(clock);
     expect(game.drainEvents().filter((e) => e.type === 'ghost_moved')).toHaveLength(20);
+  });
+});
+
+describe('createGame — collisions et invincibilité (J10, J11)', () => {
+  let clock: number;
+
+  beforeEach(() => {
+    clock = 0;
+  });
+
+  /**
+   * Grille 3x3, torchRadius 0, 1 fantôme figé en (0,0) (jamais de tick() à
+   * élapsé non nul, donc moveProgress reste à 0). Le personnage part de (1,2)
+   * et rejoint (0,0) via 3 déplacements chaos entièrement déterministes
+   * (aucun rng nécessaire côté personnage), ce qui provoque la collision.
+   */
+  function setupCollisionScenario(collisionMode: GameConfig['collisionMode']) {
+    const rng = sequenceRng([0]); // spawn du fantôme en (0,0) ; cible initiale jamais atteinte
+    const game = createGame(
+      config({ gridCols: 3, gridRows: 3, torchRadius: 0, ghostCount: 1, ghostSpeed: 0.5, collisionMode }),
+      rng,
+      () => clock,
+    );
+    game.reset();
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 });
+    game.launch();
+    game.tick(0); // référence de temps, n'avance pas le fantôme (elapsed=0)
+    game.drainEvents();
+
+    clock = 500;
+    game.handleInput('up', 'A'); // (1,2) -> (1,1)
+    clock = 1000;
+    game.handleInput('up', 'A'); // (1,1) -> (1,0)
+    clock = 1500;
+    game.handleInput('left', 'A'); // (1,0) -> (0,0) = collision avec le fantôme
+    return game;
+  }
+
+  it('passif : aucun effet', () => {
+    const game = setupCollisionScenario('passif');
+    const events = game.drainEvents();
+
+    expect(game.getState().character.pos).toEqual({ col: 0, row: 0 });
+    expect(game.getState().character.invincibleUntil).toBeNull();
+    expect(game.getState().phase).toBe('running');
+    expect(events.some((e) => e.type === 'character_died')).toBe(false);
+  });
+
+  it('mortel_reapparition : repositionne au départ, cases révélées conservées, invincibilité 2s', () => {
+    const game = setupCollisionScenario('mortel_reapparition');
+    const events = game.drainEvents();
+
+    expect(game.getState().character.pos).toEqual({ col: 1, row: 2 }); // retour au départ
+    expect(game.getState().character.invincibleUntil).toBe(1500 + 2000);
+    expect(events.filter((e) => e.type === 'character_died')).toHaveLength(1);
+    // cases traversées pendant la fuite : toutes encore révélées (rien n'est remis à zéro)
+    expect(game.getState().revealed[cellIndex(0, 0, 3)]).toBe(true);
+    expect(game.getState().revealed[cellIndex(1, 0, 3)]).toBe(true);
+    expect(game.getState().revealed[cellIndex(1, 1, 3)]).toBe(true);
+    expect(game.getState().revealed[cellIndex(1, 2, 3)]).toBe(true); // départ
+
+    // collisions ignorées pendant l'invincibilité : re-rejoindre (0,0) ne tue pas une 2e fois
+    // (clock >= 2000 pour respecter le cooldown chaos de 500ms depuis le dernier déplacement à 1500)
+    clock = 2000;
+    game.handleInput('up', 'A'); // (1,2) -> (1,1)
+    clock = 2500;
+    game.handleInput('up', 'A'); // (1,1) -> (1,0)
+    clock = 3000;
+    game.handleInput('left', 'A'); // (1,0) -> (0,0) = même case que le fantôme, mais invincible jusqu'à 3500
+    const secondEvents = game.drainEvents();
+
+    expect(game.getState().character.pos).toEqual({ col: 0, row: 0 }); // pas de rebond : la collision est ignorée
+    expect(secondEvents.some((e) => e.type === 'character_died')).toBe(false); // pas de 2e mort (pas de boucle de mort)
+  });
+
+  it('mortel_reinitialisation : repositionne au départ, brouillard à 100% sauf la zone de départ', () => {
+    const game = setupCollisionScenario('mortel_reinitialisation');
+    const events = game.drainEvents();
+
+    expect(game.getState().character.pos).toEqual({ col: 1, row: 2 });
+    expect(game.getState().character.invincibleUntil).toBe(1500 + 2000);
+    expect(events.filter((e) => e.type === 'character_died')).toHaveLength(1);
+    // brouillard remis à 100%, sauf la zone de départ re-révélée
+    expect(game.getState().revealed[cellIndex(0, 0, 3)]).toBe(false);
+    expect(game.getState().revealed[cellIndex(1, 0, 3)]).toBe(false);
+    expect(game.getState().revealed[cellIndex(1, 1, 3)]).toBe(false);
+    expect(game.getState().revealed[cellIndex(1, 2, 3)]).toBe(true); // départ, re-révélée
   });
 });

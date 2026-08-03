@@ -10,6 +10,10 @@ function noRng(): number {
   throw new Error('rng ne devrait pas être appelé dans ce ticket');
 }
 
+function fixedRng(value: number): () => number {
+  return () => value;
+}
+
 describe('createGame — phases et timer', () => {
   let clock: number;
   let game: GameEngine;
@@ -259,5 +263,95 @@ describe('createGame — mode Chaos (J5)', () => {
     clock = 5000;
     g.handleInput('up', 'Alex');
     expect(g.getState().character.pos).toEqual({ col: 3, row: 3 });
+  });
+});
+
+describe('createGame — mode Démocratie (J6)', () => {
+  let clock: number;
+  let game: GameEngine;
+
+  function start(rng: () => number = noRng): void {
+    clock = 0;
+    game = createGame(config({ movementMode: 'democratie', democracyWindowMs: 300 }), rng, () => clock);
+    game.reset();
+    game.launch();
+    game.tick(0); // résout la fenêtre vide initiale, ouvre la première vraie fenêtre (close à 300)
+    game.drainEvents();
+  }
+
+  beforeEach(() => start());
+
+  it('majorité simple exécutée à la fermeture de la fenêtre', () => {
+    game.handleInput('up', 'A');
+    game.handleInput('up', 'B');
+    game.handleInput('up', 'C');
+    game.handleInput('down', 'D');
+
+    clock = 300;
+    game.tick(clock); // ferme la fenêtre : up (3) > down (1)
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 4 });
+  });
+
+  it('la fenêtre ne se ferme pas avant son terme', () => {
+    game.handleInput('up', 'A');
+    clock = 299;
+    game.tick(clock);
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 5 });
+  });
+
+  it('fenêtre vide : aucun vote, personnage immobile', () => {
+    clock = 300;
+    game.tick(clock);
+    const events = game.drainEvents();
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 5 });
+    expect(events.some((e) => e.type === 'character_moved')).toBe(false);
+  });
+
+  it('égalité : tirage au sort rng parmi les ex æquo', () => {
+    start(fixedRng(0)); // tied = ['up', 'down'] (ordre fixe), floor(0*2) = 0 -> 'up'
+    game.handleInput('up', 'A');
+    game.handleInput('down', 'B');
+    clock = 300;
+    game.tick(clock);
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 4 }); // up
+
+    start(fixedRng(0.99)); // floor(0.99*2) = 1 -> 'down'
+    game.handleInput('up', 'A');
+    game.handleInput('down', 'B');
+    clock = 300;
+    game.tick(clock);
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 5 }); // déjà en bas : immobile (mur)
+  });
+
+  it('vote gagnant vers un mur : compté mais personnage immobile', () => {
+    game.handleInput('down', 'A'); // déjà sur la dernière ligne
+    game.handleInput('down', 'B');
+    clock = 300;
+    game.tick(clock);
+    const events = game.drainEvents();
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 5 });
+    expect(events.some((e) => e.type === 'character_moved')).toBe(false);
+  });
+
+  it('chaque appui compte comme un vote, même vers un mur', () => {
+    game.handleInput('down', 'A');
+    game.handleInput('down', 'B');
+    const events = game.drainEvents();
+    expect(events.filter((e) => e.type === 'input_accepted')).toHaveLength(2);
+  });
+
+  it('la durée de fenêtre configurée à la dernière réinitialisation reste stable', () => {
+    const g = createGame(config({ movementMode: 'democratie', democracyWindowMs: 1000 }), noRng, () => clock);
+    clock = 0;
+    g.reset();
+    g.launch();
+    g.tick(0); // ouvre la fenêtre, close à 1000
+    g.handleInput('up', 'A');
+    clock = 999;
+    g.tick(clock);
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 5 }); // pas encore résolu
+    clock = 1000;
+    g.tick(clock);
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 4 }); // résolu pile à 1000
   });
 });

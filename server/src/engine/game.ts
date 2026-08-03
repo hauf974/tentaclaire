@@ -1,8 +1,12 @@
-import type { CharacterState, Direction, GameConfig, GameState } from '@tentaclaire/shared';
+import type { CharacterState, Direction, GameConfig, GameState, Position } from '@tentaclaire/shared';
 
 import type { EngineEvent } from './events.js';
 import { cellIndex, createEmptyRevealed, setCells, startingPosition, torchCells } from './grid.js';
-import { applyDirection } from './movement.js';
+import { applyDirection, resolveVoteWindow } from './movement.js';
+
+function emptyVotes(): Record<Direction, number> {
+  return { up: 0, down: 0, left: 0, right: 0 };
+}
 
 export interface GameEngine {
   /** Avance l'horloge du moteur ; `nowMs` est l'horodatage courant (injecté par l'appelant). */
@@ -36,6 +40,8 @@ export function createGame(
   const events: EngineEvent[] = [];
   let lastTickAt: number | null = null;
   let cooldownUntil = 0;
+  let votes = emptyVotes();
+  let voteWindowEndsAt = 0;
 
   const state: GameState = {
     phase: 'idle',
@@ -71,7 +77,28 @@ export function createGame(
     state.cooldownRemainingMs = 0;
     state.ghosts = [];
     cooldownUntil = 0;
+    votes = emptyVotes();
+    voteWindowEndsAt = 0;
     return changed;
+  }
+
+  /** Déplace le personnage vers `target`, révèle la zone de torche, émet les événements. */
+  function moveCharacter(target: Position, direction: Direction): void {
+    state.character.pos = target;
+    state.character.facing = direction;
+
+    const revealIndices = torchCells(target, config.torchRadius, state.cols, state.rows).map((p) =>
+      cellIndex(p.col, p.row, state.cols),
+    );
+    const revealedChanges = setCells(state.revealed, revealIndices, true);
+
+    events.push({ type: 'character_moved', character: cloneCharacter(state.character) });
+    if (revealedChanges.length > 0) {
+      events.push({
+        type: 'revealed_changed',
+        changes: revealedChanges.map((index) => ({ index, revealed: true })),
+      });
+    }
   }
 
   // État initial `idle` (avant tout reset explicite) : plateau valide mais inerte,
@@ -97,6 +124,19 @@ export function createGame(
           events.push({ type: 'revealed_changed', changes: changes.map((index) => ({ index, revealed: false })) });
         }
         events.push({ type: 'defeat' });
+        return; // arrêt immédiat (J13) : rien d'autre n'avance ce tick
+      }
+
+      if (config.movementMode === 'democratie' && nowMs >= voteWindowEndsAt) {
+        const winner = resolveVoteWindow(votes, rng);
+        votes = emptyVotes();
+        voteWindowEndsAt = nowMs + config.democracyWindowMs;
+
+        if (winner !== null) {
+          const target = applyDirection(state.character.pos, winner, state.cols, state.rows, false);
+          if (target !== null) moveCharacter(target, winner);
+          // sinon : direction gagnante vers un mur -> immobile ce tour-ci (Gameplay §1)
+        }
       }
     },
 
@@ -110,21 +150,12 @@ export function createGame(
         if (target === null) return; // mur : ignoré, ne consomme pas le cooldown (Gameplay §1)
 
         cooldownUntil = now() + config.chaosCooldownMs;
-        state.character.pos = target;
-        state.character.facing = direction;
-
-        const revealIndices = torchCells(target, config.torchRadius, state.cols, state.rows).map((p) =>
-          cellIndex(p.col, p.row, state.cols),
-        );
-        const revealedChanges = setCells(state.revealed, revealIndices, true);
-
-        events.push({ type: 'character_moved', character: cloneCharacter(state.character) });
-        if (revealedChanges.length > 0) {
-          events.push({
-            type: 'revealed_changed',
-            changes: revealedChanges.map((index) => ({ index, revealed: true })),
-          });
-        }
+        moveCharacter(target, direction);
+        events.push({ type: 'input_accepted', pseudo, direction });
+      } else {
+        // Démocratie (J6) : chaque appui compte comme une voix, y compris vers un mur ;
+        // la fenêtre n'est résolue que dans tick().
+        votes[direction]++;
         events.push({ type: 'input_accepted', pseudo, direction });
       }
     },

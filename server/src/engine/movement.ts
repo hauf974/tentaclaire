@@ -30,3 +30,18 @@ export function applyDirection(
   if (col < 0 || col >= cols || row < 0 || row >= rows) return null;
   return { col, row };
 }
+
+const DIRECTIONS: Direction[] = ['up', 'down', 'left', 'right'];
+
+/**
+ * Résout une fenêtre de vote (J6) : direction majoritaire ; égalité -> tirage
+ * au sort `rng` parmi les ex æquo ; zéro vote -> `null` (immobile).
+ */
+export function resolveVoteWindow(votes: Record<Direction, number>, rng: () => number): Direction | null {
+  const max = Math.max(...DIRECTIONS.map((d) => votes[d]));
+  if (max === 0) return null;
+
+  const tied = DIRECTIONS.filter((d) => votes[d] === max);
+  if (tied.length === 1) return tied[0];
+  return tied[Math.floor(rng() * tied.length)];
+}

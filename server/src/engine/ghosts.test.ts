@@ -65,3 +65,38 @@ describe('chooseNextTarget (IA aléatoire, ticket 1.5)', () => {
     expect(chooseNextTarget(pos, 'aleatoire', character, 10, 10, () => 0.76)).toEqual({ col: 1, row: 0 }); // right
   });
 });
+
+describe('chooseNextTarget (IA traque, ticket 1.6)', () => {
+  it('choisit la direction qui minimise la distance directe au personnage', () => {
+    // personnage 2 colonnes à droite, sans intérêt pour le tore : right est optimal sans ambiguïté
+    const target = chooseNextTarget({ col: 0, row: 0 }, 'traque', { col: 2, row: 0 }, 10, 10, sequenceRng([0]));
+    expect(target).toEqual({ col: 1, row: 0 });
+  });
+
+  it('reconnaît le chemin le plus court via le tore (J9)', () => {
+    // personnage en (9,0) : à 9 cases en direct, à 1 case via le bord -> left (tore) est optimal
+    const target = chooseNextTarget({ col: 0, row: 0 }, 'traque', { col: 9, row: 0 }, 10, 10, sequenceRng([0]));
+    expect(target).toEqual({ col: 9, row: 0 });
+  });
+
+  it('20 % du temps, direction aléatoire au lieu de traquer', () => {
+    // rng >= 0.8 -> bascule sur la branche aléatoire ; ensuite floor(0.51*4)=2 -> left
+    const target = chooseNextTarget({ col: 5, row: 5 }, 'traque', { col: 0, row: 0 }, 10, 10, sequenceRng([0.9, 0.51]));
+    expect(target).toEqual({ col: 4, row: 5 }); // left, alors que traquer aurait donné up ou left selon la distance
+  });
+
+  it('converge statistiquement vers le personnage avec un rng biaisé (toujours traque)', () => {
+    const character = { col: 5, row: 5 };
+    let pos = { col: 0, row: 0 };
+    const rng = () => 0; // < 0.8 en permanence -> toujours la branche traque, déterministe
+
+    let previousDistance = toroidalDistance(pos, character, 10, 10);
+    for (let i = 0; i < 10; i++) {
+      pos = chooseNextTarget(pos, 'traque', character, 10, 10, rng);
+      const distance = toroidalDistance(pos, character, 10, 10);
+      expect(distance).toBeLessThanOrEqual(previousDistance);
+      previousDistance = distance;
+    }
+    expect(previousDistance).toBeLessThanOrEqual(1);
+  });
+});

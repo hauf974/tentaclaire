@@ -47,8 +47,13 @@ export function toroidalDistance(a: Position, b: Position, cols: number, rows: n
 
 /**
  * Choisit la prochaine case cible d'un fantôme depuis `pos` (toujours une
- * position valide, bords toriques). Ticket 1.5 : IA `aleatoire` uniquement
- * (`behavior`/`characterPos` ne sont pas encore utilisés — traque en 1.6).
+ * position valide, bords toriques).
+ *
+ * `aleatoire` : direction uniforme parmi les 4 (1 appel rng).
+ * `traque` (J9) : 80 % du temps (1 appel rng pour le tirage), la direction
+ * qui minimise la distance à vol d'oiseau torique jusqu'au personnage (égalité
+ * -> ordre fixe up/down/left/right, déterministe, aucun appel rng
+ * supplémentaire) ; les 20 % restants, direction uniforme (1 appel rng).
  */
 export function chooseNextTarget(
   pos: Position,
@@ -58,6 +63,20 @@ export function chooseNextTarget(
   rows: number,
   rng: () => number,
 ): Position {
+  if (behavior === 'traque' && rng() < 0.8) {
+    let best = DIRECTIONS[0];
+    let bestDistance = Infinity;
+    for (const direction of DIRECTIONS) {
+      const candidate = applyDirection(pos, direction, cols, rows, true) as Position;
+      const distance = toroidalDistance(candidate, characterPos, cols, rows);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = direction;
+      }
+    }
+    return applyDirection(pos, best, cols, rows, true) as Position;
+  }
+
   const direction = DIRECTIONS[Math.floor(rng() * DIRECTIONS.length)];
   return applyDirection(pos, direction, cols, rows, true) as Position;
 }

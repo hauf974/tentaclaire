@@ -2,7 +2,9 @@ import type { GamePhase, GameState, PublicConfig } from '@tentaclaire/shared';
 import { onMounted, onUnmounted, type Ref } from 'vue';
 
 import { drawBoard } from '../canvas/boardRenderer.js';
+import { createCharacterAnimator, isCharacterVisible, victoryBounceOffset } from '../canvas/characterAnimator.js';
 import { createFogAnimator } from '../canvas/fogAnimator.js';
+import { ghostFloatOffset, ghostVisualPosition } from '../canvas/ghostVisuals.js';
 
 /**
  * Boucle de rendu du plateau : dimensionne le canvas en letterbox au ratio de
@@ -18,6 +20,7 @@ export function useBoardCanvas(
   activeImageUrl: Ref<string | null>,
 ): void {
   const fog = createFogAnimator();
+  const character = createCharacterAnimator();
 
   let lastCols = 0;
   let lastRows = 0;
@@ -89,10 +92,13 @@ export function useBoardCanvas(
     lastPhase = s.phase;
 
     fog.tick(elapsed);
+    character.setCharacter(s.character);
+    character.tick(elapsed);
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const now = Date.now();
     drawBoard(ctx, canvas.width, canvas.height, {
       cols: s.cols,
       rows: s.rows,
@@ -100,6 +106,16 @@ export function useBoardCanvas(
       backgroundImage,
       showGridOnFog: config.value?.showGridOnFog ?? true,
       showGridOnRevealed: config.value?.showGridOnRevealed ?? true,
+      character: {
+        visualPos: character.getVisualPos(),
+        facing: character.getFacing(),
+        visible: isCharacterVisible(s.character.invincibleUntil, now),
+        bounceOffset: s.phase === 'victory' ? victoryBounceOffset(now) : 0,
+      },
+      ghosts: s.ghosts.map((ghost) => ({
+        visualPos: ghostVisualPosition(ghost, s.cols, s.rows),
+        floatOffset: ghostFloatOffset(ghost.id, now),
+      })),
     });
   }
 

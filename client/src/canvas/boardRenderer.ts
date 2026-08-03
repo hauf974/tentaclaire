@@ -1,9 +1,32 @@
+import type { Direction, Position } from '@tentaclaire/shared';
+
 import type { FogAnimator } from './fogAnimator.js';
 
 // Thème neutre fonctionnel (le thème « Carte du Maraudeur » arrive au Lot 6).
 const FOG_COLOR = [20, 24, 38] as const;
 const BACKGROUND_COLOR = '#2a2f3a';
 const GRID_COLOR = 'rgba(255, 255, 255, 0.15)';
+const CHARACTER_COLOR = '#f4d35e';
+const GHOST_COLOR = 'rgba(220, 220, 255, 0.85)';
+
+const DIRECTION_VECTORS: Record<Direction, { dx: number; dy: number }> = {
+  up: { dx: 0, dy: -1 },
+  down: { dx: 0, dy: 1 },
+  left: { dx: -1, dy: 0 },
+  right: { dx: 1, dy: 0 },
+};
+
+export interface CharacterSprite {
+  visualPos: Position;
+  facing: Direction;
+  visible: boolean;
+  bounceOffset: number;
+}
+
+export interface GhostSprite {
+  visualPos: Position;
+  floatOffset: number;
+}
 
 export interface BoardScene {
   cols: number;
@@ -12,6 +35,8 @@ export interface BoardScene {
   backgroundImage: HTMLImageElement | null;
   showGridOnFog: boolean;
   showGridOnRevealed: boolean;
+  character: CharacterSprite | null;
+  ghosts: GhostSprite[];
 }
 
 /** Dessine l'image de fond en `cover`, recadrée centrée sur la cible (G3). */
@@ -56,7 +81,52 @@ function drawGrid(ctx: CanvasRenderingContext2D, cols: number, rows: number, wid
   ctx.stroke();
 }
 
-/** Dessine le plateau (fond, brouillard, quadrillage) sur toute la surface du canvas. */
+/** Personnage (D4) : smiley rond, lunettes rondes, torche dans la direction `facing`. */
+function drawCharacter(ctx: CanvasRenderingContext2D, cellW: number, cellH: number, sprite: CharacterSprite): void {
+  if (!sprite.visible) return;
+
+  const cx = (sprite.visualPos.col + 0.5) * cellW;
+  const cy = (sprite.visualPos.row + 0.5 + sprite.bounceOffset) * cellH;
+  const radius = Math.min(cellW, cellH) * 0.35;
+
+  ctx.fillStyle = CHARACTER_COLOR;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = Math.max(1, radius * 0.12);
+  const eyeOffsetX = radius * 0.4;
+  const eyeOffsetY = radius * 0.15;
+  ctx.beginPath();
+  ctx.arc(cx - eyeOffsetX, cy - eyeOffsetY, radius * 0.25, 0, Math.PI * 2);
+  ctx.moveTo(cx + eyeOffsetX + radius * 0.25, cy - eyeOffsetY);
+  ctx.arc(cx + eyeOffsetX, cy - eyeOffsetY, radius * 0.25, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const dir = DIRECTION_VECTORS[sprite.facing];
+  ctx.fillStyle = '#ffdd66';
+  ctx.beginPath();
+  ctx.arc(cx + dir.dx * radius * 1.6, cy + dir.dy * radius * 1.6, radius * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawGhost(ctx: CanvasRenderingContext2D, cellW: number, cellH: number, sprite: GhostSprite): void {
+  const cx = (sprite.visualPos.col + 0.5) * cellW;
+  const cy = (sprite.visualPos.row + 0.5 + sprite.floatOffset) * cellH;
+  const size = Math.min(cellW, cellH) * 0.3;
+
+  ctx.fillStyle = GHOST_COLOR;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - size);
+  ctx.lineTo(cx + size, cy);
+  ctx.lineTo(cx, cy + size);
+  ctx.lineTo(cx - size, cy);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/** Dessine le plateau (fond, brouillard, quadrillage, personnage, fantômes) sur toute la surface du canvas. */
 export function drawBoard(ctx: CanvasRenderingContext2D, width: number, height: number, scene: BoardScene): void {
   ctx.clearRect(0, 0, width, height);
 
@@ -87,5 +157,13 @@ export function drawBoard(ctx: CanvasRenderingContext2D, width: number, height: 
 
   if (scene.showGridOnFog) {
     drawGrid(ctx, scene.cols, scene.rows, width, height);
+  }
+
+  // Personnage et fantômes toujours visibles au-dessus du brouillard/quadrillage.
+  for (const ghost of scene.ghosts) {
+    drawGhost(ctx, cellW, cellH, ghost);
+  }
+  if (scene.character) {
+    drawCharacter(ctx, cellW, cellH, scene.character);
   }
 }

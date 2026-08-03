@@ -7,6 +7,8 @@ export interface AdminAuth {
   login(password: string, now: number): string | null;
   /** Vrai si `sessionId` correspond à une session admin encore valide. */
   isValid(sessionId: string | undefined, now: number): boolean;
+  /** Invalide `sessionId` s'il existe. */
+  logout(sessionId: string | undefined): void;
 }
 
 /** Auth admin minimale (T5) : mot de passe unique, session opaque en mémoire, cookie httpOnly côté appelant. */
@@ -30,6 +32,10 @@ export function createAdminAuth(adminPassword: string): AdminAuth {
         return false;
       }
       return true;
+    },
+
+    logout(sessionId) {
+      if (sessionId) sessions.delete(sessionId);
     },
   };
 }

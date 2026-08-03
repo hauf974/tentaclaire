@@ -27,4 +27,17 @@ describe('createAdminAuth', () => {
     expect(auth.isValid(sessionId ?? undefined, DAY - 1)).toBe(true);
     expect(auth.isValid(sessionId ?? undefined, DAY)).toBe(false);
   });
+
+  it('logout invalide la session', () => {
+    const auth = createAdminAuth('secret');
+    const sessionId = auth.login('secret', 0);
+    auth.logout(sessionId ?? undefined);
+    expect(auth.isValid(sessionId ?? undefined, 0)).toBe(false);
+  });
+
+  it('logout est sans effet sur un id absent ou inconnu', () => {
+    const auth = createAdminAuth('secret');
+    expect(() => auth.logout(undefined)).not.toThrow();
+    expect(() => auth.logout('id-inconnu')).not.toThrow();
+  });
 });

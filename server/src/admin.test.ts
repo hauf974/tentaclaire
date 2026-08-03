@@ -129,4 +129,27 @@ describe('authentification et config admin (ticket 2.4)', () => {
     built.game.reset(built.configStore.get());
     expect(built.game.getState().ghosts).toHaveLength(10);
   });
+
+  it('logout invalide le cookie (ticket 5.1)', async () => {
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ adminPassword: ADMIN_PASSWORD, uploadDir });
+    const cookie = await login(built);
+
+    const before = await built.app.inject({ method: 'GET', url: '/api/admin/config', headers: { cookie } });
+    expect(before.statusCode).toBe(200);
+
+    const logout = await built.app.inject({ method: 'POST', url: '/api/admin/logout', headers: { cookie } });
+    expect(logout.statusCode).toBe(200);
+
+    const after = await built.app.inject({ method: 'GET', url: '/api/admin/config', headers: { cookie } });
+    expect(after.statusCode).toBe(401);
+  });
+
+  it('logout sans cookie ne plante pas (idempotent)', async () => {
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ adminPassword: ADMIN_PASSWORD, uploadDir });
+
+    const response = await built.app.inject({ method: 'POST', url: '/api/admin/logout' });
+    expect(response.statusCode).toBe(200);
+  });
 });

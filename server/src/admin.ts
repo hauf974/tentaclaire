@@ -39,8 +39,20 @@ export async function registerAdminRoutes(app: FastifyInstance, deps: AdminRoute
     return { ok: true };
   });
 
+  app.post('/api/admin/logout', async (request, reply) => {
+    deps.adminAuth.logout(request.cookies[COOKIE_NAME]);
+    reply.clearCookie(COOKIE_NAME, { path: '/' });
+    return { ok: true };
+  });
+
   app.addHook('preHandler', async (request, reply) => {
-    if (!request.url.startsWith('/api/admin/') || request.url === '/api/admin/login') return;
+    if (
+      !request.url.startsWith('/api/admin/') ||
+      request.url === '/api/admin/login' ||
+      request.url === '/api/admin/logout'
+    ) {
+      return;
+    }
     const sessionId = request.cookies[COOKIE_NAME];
     if (!deps.adminAuth.isValid(sessionId, Date.now())) {
       return reply.code(401).send({ error: 'non authentifié' });

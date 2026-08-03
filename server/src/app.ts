@@ -3,15 +3,17 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import fastifyStatic from '@fastify/static';
-import type { GameConfig, GameEventType } from '@tentaclaire/shared';
+import type { GameConfig, GameEventType, PublicConfig } from '@tentaclaire/shared';
 import { defaultGameConfig } from '@tentaclaire/shared';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { Server as SocketIOServer } from 'socket.io';
 
 import type { EngineEvent } from './engine/events.js';
 import { createGame, type GameEngine } from './engine/game.js';
+import { createFeed } from './feed.js';
 import { cloneGameState, computeStateDelta } from './realtime.js';
 import { createSessionStore, type SessionStore } from './sessions.js';
+import { registerSockets } from './sockets.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TICK_MS = 100;
@@ -66,6 +68,26 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
   const io = new SocketIOServer(app.server);
   const game = createGame(config, Math.random, Date.now);
   const sessions = createSessionStore();
+  const feed = createFeed();
+
+  // Dérivé de la config du moteur pour l'instant ; ticket 2.4 branchera la
+  // config admin mutable, ticket 2.5 la galerie d'images.
+  function getPublicConfig(): PublicConfig {
+    return {
+      gridCols: config.gridCols,
+      gridRows: config.gridRows,
+      showGridOnFog: config.showGridOnFog,
+      showGridOnRevealed: config.showGridOnRevealed,
+      movementMode: config.movementMode,
+      torchRadius: config.torchRadius,
+      theme: config.theme,
+    };
+  }
+  function getActiveImageUrl(): string | null {
+    return null;
+  }
+
+  registerSockets(io, { game, sessions, feed, getPublicConfig, getActiveImageUrl });
 
   let lastBroadcast: ReturnType<GameEngine['getState']> | null = null;
 
@@ -83,18 +105,16 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
     for (const event of game.drainEvents()) {
       if (isMarkerEvent(event)) {
         io.emit('game_event', { type: event.type });
+      } else if (event.type === 'input_accepted') {
+        const entry = feed.add(event.pseudo, event.direction, Date.now());
+        io.emit('feed_add', { entry });
       }
-      // 'input_accepted' -> feed_add : relayé au ticket 2.3 (nécessite les sessions).
     }
   }, TICK_MS);
 
   const pruneInterval = setInterval(() => {
     sessions.pruneExpired(Date.now());
   }, PRUNE_SESSIONS_MS);
-
-  io.on('connection', (socket) => {
-    app.log.info({ id: socket.id }, 'socket connecté');
-  });
 
   async function stop(): Promise<void> {
     clearInterval(interval);

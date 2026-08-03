@@ -1,6 +1,7 @@
-import type { CharacterState, Direction, GameConfig, GameState, Position } from '@tentaclaire/shared';
+import type { CharacterState, Direction, GameConfig, GameState, GhostState, Position } from '@tentaclaire/shared';
 
 import type { EngineEvent } from './events.js';
+import { chooseNextTarget, spawnGhosts } from './ghosts.js';
 import { cellIndex, createEmptyRevealed, setCells, startingPosition, torchCells } from './grid.js';
 import { applyDirection, resolveVoteWindow } from './movement.js';
 
@@ -31,6 +32,15 @@ function cloneCharacter(character: CharacterState): CharacterState {
   return { pos: { ...character.pos }, invincibleUntil: character.invincibleUntil, facing: character.facing };
 }
 
+function cloneGhost(ghost: GhostState): GhostState {
+  return {
+    id: ghost.id,
+    pos: { ...ghost.pos },
+    target: ghost.target ? { ...ghost.target } : null,
+    moveProgress: ghost.moveProgress,
+  };
+}
+
 export function createGame(
   initialConfig: GameConfig,
   rng: () => number,
@@ -57,10 +67,11 @@ export function createGame(
 
   /**
    * (Ré)initialise le plateau d'après `config` : brouillard 100 %, personnage
-   * au départ, timer plein. Renvoie les index révélés (toujours la zone de
-   * départ entière, puisqu'on part d'une grille neuve).
+   * au départ, timer plein. Renvoie les index de la zone de départ et ceux
+   * réellement révélés (toujours la zone entière, puisqu'on part d'une
+   * grille neuve).
    */
-  function initializeBoard(): number[] {
+  function initializeBoard(): { startIndices: number[]; changed: number[] } {
     state.cols = config.gridCols;
     state.rows = config.gridRows;
     state.revealed = createEmptyRevealed(config.gridCols, config.gridRows);
@@ -79,7 +90,59 @@ export function createGame(
     cooldownUntil = 0;
     votes = emptyVotes();
     voteWindowEndsAt = 0;
-    return changed;
+
+    return { startIndices, changed };
+  }
+
+  /**
+   * Replace les fantômes (J7), hors de `startIndices`. Appelé uniquement par
+   * `reset()` — l'état `idle` initial (avant tout reset explicite) n'a pas
+   * besoin de vrais fantômes et ne doit pas consommer le rng pour un état
+   * jetable.
+   */
+  function spawnGhostsAt(startIndices: number[]): void {
+    const spawned = spawnGhosts(config.ghostCount, config.gridCols, config.gridRows, startIndices, rng);
+    state.ghosts = spawned.map((s) => ({
+      id: s.id,
+      pos: s.pos,
+      target: chooseNextTarget(s.pos, config.ghostBehavior, state.character.pos, state.cols, state.rows, rng),
+      moveProgress: 0,
+    }));
+  }
+
+  /** Avance tous les fantômes de `elapsedMs`, gère recouvrement et changement de cible. */
+  function advanceGhosts(elapsedMs: number): void {
+    if (elapsedMs <= 0) return;
+    const characterIndex = cellIndex(state.character.pos.col, state.character.pos.row, state.cols);
+
+    for (const ghost of state.ghosts) {
+      if (ghost.target === null) continue;
+      ghost.moveProgress += config.ghostSpeed * (elapsedMs / 1000);
+
+      while (ghost.moveProgress >= 1) {
+        ghost.moveProgress -= 1;
+        const departedIndex = cellIndex(ghost.pos.col, ghost.pos.row, state.cols);
+        ghost.pos = ghost.target;
+
+        if (departedIndex !== characterIndex) {
+          const changed = setCells(state.revealed, [departedIndex], false);
+          if (changed.length > 0) {
+            events.push({ type: 'revealed_changed', changes: [{ index: departedIndex, revealed: false }] });
+          }
+        }
+
+        ghost.target = chooseNextTarget(
+          ghost.pos,
+          config.ghostBehavior,
+          state.character.pos,
+          state.cols,
+          state.rows,
+          rng,
+        );
+      }
+
+      events.push({ type: 'ghost_moved', ghost: cloneGhost(ghost) });
+    }
   }
 
   /** Déplace le personnage vers `target`, révèle la zone de torche, émet les événements. */
@@ -138,6 +201,8 @@ export function createGame(
           // sinon : direction gagnante vers un mur -> immobile ce tour-ci (Gameplay §1)
         }
       }
+
+      advanceGhosts(elapsed);
     },
 
     handleInput(direction: Direction, pseudo: string): void {
@@ -177,7 +242,8 @@ export function createGame(
 
     reset(newConfig?: GameConfig): void {
       if (newConfig) config = newConfig;
-      const changed = initializeBoard();
+      const { startIndices, changed } = initializeBoard();
+      spawnGhostsAt(startIndices);
       state.phase = 'reset';
       if (changed.length > 0) {
         events.push({ type: 'revealed_changed', changes: changed.map((index) => ({ index, revealed: true })) });

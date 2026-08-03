@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createGame, type GameEngine } from './game.js';
 
 function config(overrides: Partial<GameConfig> = {}): GameConfig {
-  return { ...defaultGameConfig, gridCols: 6, gridRows: 6, ...overrides };
+  // ghostCount: 0 par défaut pour ces tests (phases/chaos/démocratie) : les
+  // fantômes ont leur propre suite dédiée plus bas, avec un rng contrôlé.
+  return { ...defaultGameConfig, gridCols: 6, gridRows: 6, ghostCount: 0, ...overrides };
 }
 
 function noRng(): number {
@@ -353,5 +355,147 @@ describe('createGame — mode Démocratie (J6)', () => {
     clock = 1000;
     g.tick(clock);
     expect(g.getState().character.pos).toEqual({ col: 3, row: 4 }); // résolu pile à 1000
+  });
+});
+
+function sequenceRng(values: number[]): () => number {
+  let i = 0;
+  return () => values[i++ % values.length];
+}
+
+describe('createGame — fantômes : déplacement et recouvrement (J7, J8)', () => {
+  let clock: number;
+
+  beforeEach(() => {
+    clock = 0;
+  });
+
+  it('traverse les quatre bords via le tore (J4)', () => {
+    // rng: [spawn=pool[0], up, down, left, right] -> voir commentaires ci-dessous
+    const rng = sequenceRng([0, 0, 0.26, 0.51, 0.76]);
+    const game = createGame(config({ gridCols: 10, gridRows: 10, ghostCount: 1, ghostSpeed: 1 }), rng, () => clock);
+    game.reset();
+    // pool[0] = index 0 (zone de départ du perso loin du coin haut-gauche sur une grille 10x10)
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 });
+    game.launch();
+    game.tick(0); // référence de temps
+    game.drainEvents();
+
+    clock = 1000; // vitesse 1 case/s -> une case franchie pile
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 9 }); // up, tore haut->bas
+
+    clock = 2000;
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 }); // down, tore bas->haut
+
+    clock = 3000;
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 9, row: 0 }); // left, tore gauche->droite
+
+    clock = 4000;
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 }); // right, tore droite->gauche
+  });
+
+  it('recouvrement des cases quittées, sauf la case occupée par le personnage (J8)', () => {
+    // Grille 3x3, torchRadius 1 : zone de départ = lignes 1 et 2 entières (6 cases),
+    // ligne 0 reste masquée -> pool de spawn = ligne 0 (index 0,1,2).
+    const rng = sequenceRng([0, 0.26, 0.76, 0.26, 0.76]);
+    const game = createGame(
+      config({ gridCols: 3, gridRows: 3, torchRadius: 1, ghostCount: 1, ghostSpeed: 1 }),
+      rng,
+      () => clock,
+    );
+    game.reset();
+    expect(game.getState().character.pos).toEqual({ col: 1, row: 2 });
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 });
+    // sanity check des index de la zone de départ, déjà révélés
+    expect(game.getState().revealed[3]).toBe(true); // (0,1)
+    expect(game.getState().revealed[4]).toBe(true); // (1,1)
+    expect(game.getState().revealed[5]).toBe(true); // (1,2) = case du personnage
+
+    game.launch();
+    game.tick(0);
+    game.drainEvents();
+
+    clock = 1000;
+    game.tick(clock); // (0,0) -> (0,1) [down] ; départ (0,0) déjà masqué, rien à voir
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 1 });
+
+    clock = 2000;
+    game.tick(clock); // (0,1) -> (1,1) [right] ; départ (0,1) était révélé -> masqué
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 1, row: 1 });
+    expect(game.getState().revealed[3]).toBe(false);
+
+    clock = 3000;
+    game.tick(clock); // (1,1) -> (1,2) [down] ; départ (1,1) était révélé -> masqué
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 1, row: 2 });
+    expect(game.getState().revealed[4]).toBe(false);
+
+    clock = 4000;
+    game.tick(clock); // (1,2) -> (2,2) [right] ; départ (1,2) = case du personnage -> PAS masqué
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 2, row: 2 });
+    expect(game.getState().revealed[5]).toBe(true);
+  });
+
+  it('vitesse 0.5 case/s : progression partielle avant la première case franchie', () => {
+    const rng = sequenceRng([0, 0]);
+    const game = createGame(config({ gridCols: 10, gridRows: 10, ghostCount: 1, ghostSpeed: 0.5 }), rng, () => clock);
+    game.reset();
+    game.launch();
+    game.tick(0);
+    game.drainEvents();
+
+    clock = 1000; // progress += 0.5*(1000/1000) = 0.5
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 });
+    expect(game.getState().ghosts[0].moveProgress).toBeCloseTo(0.5);
+
+    clock = 2000; // progress atteint 1.0 pile
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 9 });
+    expect(game.getState().ghosts[0].moveProgress).toBeCloseTo(0);
+  });
+
+  it('vitesse 5 cases/s : peut franchir plusieurs cases en un seul intervalle', () => {
+    const rng = sequenceRng([0, 0, 0.26, 0.51]);
+    const game = createGame(config({ gridCols: 10, gridRows: 10, ghostCount: 1, ghostSpeed: 5 }), rng, () => clock);
+    game.reset();
+    game.launch();
+    game.tick(0);
+    game.drainEvents();
+
+    clock = 400; // progress += 5*0.4 = 2.0 -> 2 cases franchies (up puis down, tore)
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 });
+  });
+
+  it('0 fantôme : tableau vide, aucun rng consommé', () => {
+    const game = createGame(config({ ghostCount: 0 }), noRng, () => clock);
+    game.reset();
+    expect(game.getState().ghosts).toEqual([]);
+    game.launch();
+    clock = 1000;
+    game.tick(clock);
+    expect(game.getState().ghosts).toEqual([]);
+  });
+
+  it('20 fantômes : tous initialisés et avancent chaque tick', () => {
+    let seed = 1;
+    const rng = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    const game = createGame(config({ gridCols: 10, gridRows: 10, ghostCount: 20, ghostSpeed: 1 }), rng, () => clock);
+    game.reset();
+    expect(game.getState().ghosts).toHaveLength(20);
+    game.launch();
+    game.tick(0);
+    game.drainEvents();
+
+    clock = 1000;
+    game.tick(clock);
+    expect(game.drainEvents().filter((e) => e.type === 'ghost_moved')).toHaveLength(20);
   });
 });

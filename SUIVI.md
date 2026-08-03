@@ -27,11 +27,24 @@ Tableau de bord du développement de Tentaclaire, tenu à jour ticket par ticket
 | 1.7 | Collisions et invincibilité | Terminé | 2026-08-03 | `26e75f1` |
 | 1.8 | Victoire, intégration, couverture (100 % lignes sur `engine/`) | Terminé | 2026-08-03 | `4ef1191` |
 
+## Lot 2 — Serveur temps réel
+
+| Ticket | Description | Statut | Date | Commit |
+|--------|--------------|--------|------|--------|
+| 2.1 | Boucle serveur — tick 100ms, diff d'état, composition root testable | Terminé | 2026-08-03 | `1027443` |
+| 2.2 | Sessions joueurs — tokens, pseudos suffixés, expiration 8h | Terminé | 2026-08-03 | `a1c85f6` |
+| 2.3 | Protocole joueur et écran — hello, join, input, feed_add | Terminé | 2026-08-03 | `06333a2` |
+| 2.4 | Authentification et config admin — login, cookie, GET/PUT config | Terminé | 2026-08-03 | `189b693` |
+| 2.5 | Galerie d'images — upload, magic bytes, dimensions, activation | Terminé | 2026-08-03 | `c9e1863` |
+| 2.6 | Contrôles de session — launch/pause/reset REST + snapshot | Terminé | 2026-08-03 | `49a49f7` |
+| 2.7 | Robustesse — handlers protégés, SIGTERM propre, logs, fuzzing | Terminé | 2026-08-03 | `030b734` |
+
+Vérification manuelle de fin de lot (definition of done) : partie jouable de bout en bout sur le conteneur de production réel — `curl` pour l'auth/config/contrôles admin, script `socket.io-client` pour un joueur (hello → join → input → déplacement confirmé par `state_delta`).
+
 ## Lots suivants
 
 | Lot | Contenu | Statut |
 |-----|---------|--------|
-| Lot 2 | Serveur temps réel | À faire |
 | Lot 3 | Écran géant | À faire |
 | Lot 4 | Manette mobile | À faire |
 | Lot 5 | Dashboard admin | À faire |

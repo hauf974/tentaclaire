@@ -6,6 +6,8 @@ import QrPanel from '../components/QrPanel.vue';
 import TimerOverlay from '../components/TimerOverlay.vue';
 import { useActivityFeed } from '../composables/useActivityFeed.js';
 import { useBoardCanvas } from '../composables/useBoardCanvas.js';
+import { useFullscreen } from '../composables/useFullscreen.js';
+import { useIdleCursor } from '../composables/useIdleCursor.js';
 import { useSocket } from '../composables/useSocket.js';
 
 const { socket, connected, reconnecting, state, config, activeImageUrl, feed } = useSocket('screen');
@@ -16,10 +18,17 @@ useBoardCanvas(canvasRef, boardContainerRef, state, config, activeImageUrl);
 
 const phase = computed(() => state.value?.phase);
 const activityEntries = useActivityFeed(socket, feed, phase);
+
+const { toggle: toggleFullscreen } = useFullscreen();
+const idleCursor = useIdleCursor();
 </script>
 
 <template>
-  <div class="screen">
+  <div
+    class="screen"
+    :class="{ 'idle-cursor': idleCursor }"
+    @click="toggleFullscreen"
+  >
     <div
       v-if="reconnecting"
       class="reconnect-banner"
@@ -72,6 +81,11 @@ const activityEntries = useActivityFeed(socket, feed, phase);
   background: #10131a;
   color: #eee;
   font-family: sans-serif;
+  cursor: default;
+}
+
+.screen.idle-cursor {
+  cursor: none;
 }
 
 .reconnect-banner {

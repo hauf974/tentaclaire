@@ -1,5 +1,5 @@
 <script setup lang="ts"></script>
 
 <template>
-  <router-view />
+  <div>Écran géant</div>
 </template>

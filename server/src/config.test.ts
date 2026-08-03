@@ -63,7 +63,7 @@ describe('toPublicConfig', () => {
   it("n'expose que le sous-ensemble public", () => {
     const pub = toPublicConfig(defaultGameConfig);
     expect(Object.keys(pub).sort()).toEqual(
-      ['gridCols', 'gridRows', 'movementMode', 'showGridOnFog', 'showGridOnRevealed', 'theme', 'torchRadius'].sort(),
+      ['qrUrl', 'gridCols', 'gridRows', 'movementMode', 'showGridOnFog', 'showGridOnRevealed', 'theme', 'torchRadius'].sort(),
     );
   });
 });

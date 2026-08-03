@@ -99,6 +99,7 @@ export function createConfigStore(initial: GameConfig = defaultGameConfig): Conf
 
 export function toPublicConfig(config: GameConfig): PublicConfig {
   return {
+    qrUrl: config.qrUrl,
     gridCols: config.gridCols,
     gridRows: config.gridRows,
     showGridOnFog: config.showGridOnFog,

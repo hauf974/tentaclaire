@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import PhaseOverlay from '../components/PhaseOverlay.vue';
+import QrPanel from '../components/QrPanel.vue';
 import TimerOverlay from '../components/TimerOverlay.vue';
 import { useBoardCanvas } from '../composables/useBoardCanvas.js';
 import { useSocket } from '../composables/useSocket.js';
@@ -23,7 +24,12 @@ useBoardCanvas(canvasRef, boardContainerRef, state, config, activeImageUrl);
 
     <div class="layout">
       <aside class="side-panel">
-        <!-- QR Code (ticket 3.5) et feed d'activité (ticket 3.6) -->
+        <QrPanel
+          v-if="config"
+          :qr-url="config.qrUrl"
+          :player-count="state?.playerCount ?? 0"
+        />
+        <!-- Feed d'activité (ticket 3.6) -->
       </aside>
 
       <div

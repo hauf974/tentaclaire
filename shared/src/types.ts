@@ -39,6 +39,7 @@ export interface GameConfig {
 /** Sous-ensemble de GameConfig diffusé aux clients (écran, manette). */
 export type PublicConfig = Pick<
   GameConfig,
+  | 'qrUrl'
   | 'gridCols'
   | 'gridRows'
   | 'showGridOnFog'

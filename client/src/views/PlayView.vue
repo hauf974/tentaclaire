@@ -6,7 +6,10 @@ import { TOKEN_STORAGE_KEY, useSocket } from '../composables/useSocket.js';
 
 const existingToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) ?? undefined;
 
-const { connected, reconnecting, ready, session, join, sendInput } = useSocket('player', existingToken);
+const { connected, reconnecting, ready, state, config, session, join, sendInput } = useSocket(
+  'player',
+  existingToken,
+);
 
 const pendingPseudo = ref<string | null>(null);
 const suffixNotice = ref<string | null>(null);
@@ -60,7 +63,13 @@ watch(session, (value, previous) => {
       >
         {{ suffixNotice }}
       </p>
-      <DirectionPad @input="sendInput" />
+      <DirectionPad
+        :movement-mode="config?.movementMode ?? 'chaos'"
+        :cooldown-remaining-ms="state?.cooldownRemainingMs ?? 0"
+        :chaos-cooldown-ms="config?.chaosCooldownMs ?? 500"
+        :democracy-window-ms="config?.democracyWindowMs ?? 300"
+        @input="sendInput"
+      />
     </div>
   </div>
 </template>

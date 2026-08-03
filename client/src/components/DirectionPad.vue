@@ -1,7 +1,23 @@
 <script setup lang="ts">
-import type { Direction } from '@tentaclaire/shared';
+import { computed } from 'vue';
+import type { Direction, MovementMode } from '@tentaclaire/shared';
 
-withDefaults(defineProps<{ disabled?: boolean }>(), { disabled: false });
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean;
+    movementMode?: MovementMode;
+    cooldownRemainingMs?: number;
+    chaosCooldownMs?: number;
+    democracyWindowMs?: number;
+  }>(),
+  {
+    disabled: false,
+    movementMode: 'chaos',
+    cooldownRemainingMs: 0,
+    chaosCooldownMs: 500,
+    democracyWindowMs: 300,
+  },
+);
 
 const emit = defineEmits<{ input: [direction: Direction] }>();
 
@@ -9,14 +25,26 @@ function press(direction: Direction): void {
   emit('input', direction);
   if (navigator.vibrate) navigator.vibrate(20);
 }
+
+/** Fraction 0..1 du cooldown restant (mode chaos), pour l'anneau de progression. */
+const cooldownFraction = computed(() => {
+  if (props.movementMode !== 'chaos' || props.chaosCooldownMs <= 0) return 0;
+  return Math.min(1, Math.max(0, props.cooldownRemainingMs / props.chaosCooldownMs));
+});
+
+const padStyle = computed(() => ({ '--vote-duration': `${props.democracyWindowMs}ms` }));
 </script>
 
 <template>
-  <div class="pad">
+  <div
+    class="pad"
+    :style="padStyle"
+  >
     <button
       class="btn up"
       type="button"
       :disabled="disabled"
+      :style="{ '--fraction': cooldownFraction }"
       @pointerdown.prevent="press('up')"
     >
       ⬆️
@@ -25,6 +53,7 @@ function press(direction: Direction): void {
       class="btn left"
       type="button"
       :disabled="disabled"
+      :style="{ '--fraction': cooldownFraction }"
       @pointerdown.prevent="press('left')"
     >
       ⬅️
@@ -33,6 +62,7 @@ function press(direction: Direction): void {
       class="btn right"
       type="button"
       :disabled="disabled"
+      :style="{ '--fraction': cooldownFraction }"
       @pointerdown.prevent="press('right')"
     >
       ➡️
@@ -41,15 +71,23 @@ function press(direction: Direction): void {
       class="btn down"
       type="button"
       :disabled="disabled"
+      :style="{ '--fraction': cooldownFraction }"
       @pointerdown.prevent="press('down')"
     >
       ⬇️
     </button>
+    <span
+      v-if="movementMode === 'democratie' && !disabled"
+      class="vote-label"
+    >
+      Vote en cours
+    </span>
   </div>
 </template>
 
 <style scoped>
 .pad {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
@@ -61,6 +99,7 @@ function press(direction: Direction): void {
 }
 
 .btn {
+  position: relative;
   font-size: 2.5rem;
   border: none;
   border-radius: 16px;
@@ -69,6 +108,35 @@ function press(direction: Direction): void {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(rgba(0, 0, 0, 0.55) calc(var(--fraction, 0) * 360deg), transparent 0);
+}
+
+.vote-label {
+  position: absolute;
+  bottom: -2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.85rem;
+  color: #999;
+  animation: vote-pulse var(--vote-duration, 300ms) ease-in-out infinite;
+}
+
+@keyframes vote-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .btn:active {

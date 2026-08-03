@@ -138,3 +138,126 @@ describe('createGame — phases et timer', () => {
     expect(g.getState().phase).toBe('defeat');
   });
 });
+
+describe('createGame — mode Chaos (J5)', () => {
+  let clock: number;
+  let game: GameEngine;
+
+  beforeEach(() => {
+    clock = 0;
+    game = createGame(config(), noRng, () => clock); // config() = movementMode 'chaos' par défaut
+    game.reset();
+    game.launch();
+  });
+
+  it("handleInput ignoré hors de la phase 'running'", () => {
+    game.pause();
+    game.drainEvents();
+    game.handleInput('up', 'Alex');
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 5 });
+    expect(game.drainEvents()).toEqual([]);
+  });
+
+  it('émet character_moved, revealed_changed et input_accepted pour un déplacement valide', () => {
+    game.drainEvents();
+    game.handleInput('up', 'Alex');
+    const events = game.drainEvents();
+
+    expect(events).toContainEqual({ type: 'input_accepted', pseudo: 'Alex', direction: 'up' });
+    const moved = events.find((e) => e.type === 'character_moved');
+    expect(moved).toBeDefined();
+    if (moved?.type === 'character_moved') {
+      expect(moved.character.pos).toEqual({ col: 3, row: 4 });
+      expect(moved.character.facing).toBe('up');
+    }
+    expect(events.some((e) => e.type === 'revealed_changed')).toBe(true);
+  });
+
+  it('spam pendant le cooldown : ignoré, sans re-générer d\'événements', () => {
+    game.handleInput('up', 'Alex'); // clock=0, accepté
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 4 });
+    game.drainEvents();
+
+    game.handleInput('up', 'Alex');
+    game.handleInput('up', 'Alex');
+    game.handleInput('up', 'Alex');
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 4 });
+    expect(game.drainEvents()).toEqual([]);
+  });
+
+  it('mur bloquant en bas (départ) : ignoré sans consommer le cooldown', () => {
+    game.drainEvents();
+    game.handleInput('down', 'Alex'); // déjà sur la dernière ligne
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 5 });
+    expect(game.drainEvents()).toEqual([]);
+
+    // le cooldown n'a pas démarré : un déplacement valide au même instant fonctionne
+    game.handleInput('up', 'Alex');
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 4 });
+  });
+
+  it('mur bloquant en haut', () => {
+    for (let i = 0; i < 5; i++) {
+      clock += 500;
+      game.handleInput('up', 'Alex');
+    }
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 0 });
+    game.drainEvents();
+
+    game.handleInput('up', 'Alex');
+    expect(game.getState().character.pos).toEqual({ col: 3, row: 0 });
+    expect(game.drainEvents()).toEqual([]);
+  });
+
+  it('mur bloquant à gauche', () => {
+    for (let i = 0; i < 3; i++) {
+      clock += 500;
+      game.handleInput('left', 'Alex');
+    }
+    expect(game.getState().character.pos).toEqual({ col: 0, row: 5 });
+    game.drainEvents();
+
+    game.handleInput('left', 'Alex');
+    expect(game.getState().character.pos).toEqual({ col: 0, row: 5 });
+    expect(game.drainEvents()).toEqual([]);
+  });
+
+  it('mur bloquant à droite', () => {
+    for (let i = 0; i < 2; i++) {
+      clock += 500;
+      game.handleInput('right', 'Alex');
+    }
+    expect(game.getState().character.pos).toEqual({ col: 5, row: 5 });
+    game.drainEvents();
+
+    game.handleInput('right', 'Alex');
+    expect(game.getState().character.pos).toEqual({ col: 5, row: 5 });
+    expect(game.drainEvents()).toEqual([]);
+  });
+
+  it('respecte un cooldown configuré à 100 ms', () => {
+    const g = createGame(config({ chaosCooldownMs: 100 }), noRng, () => clock);
+    g.reset();
+    g.launch();
+    g.handleInput('up', 'Alex'); // clock=0
+    clock = 99;
+    g.handleInput('up', 'Alex'); // encore dans le cooldown
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 4 });
+    clock = 100;
+    g.handleInput('up', 'Alex'); // cooldown écoulé pile
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 3 });
+  });
+
+  it('respecte un cooldown configuré à 5000 ms', () => {
+    const g = createGame(config({ chaosCooldownMs: 5000 }), noRng, () => clock);
+    g.reset();
+    g.launch();
+    g.handleInput('up', 'Alex'); // clock=0
+    clock = 4999;
+    g.handleInput('up', 'Alex');
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 4 });
+    clock = 5000;
+    g.handleInput('up', 'Alex');
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 3 });
+  });
+});

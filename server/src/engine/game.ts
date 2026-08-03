@@ -1,11 +1,14 @@
-import type { GameConfig, GameState } from '@tentaclaire/shared';
+import type { CharacterState, Direction, GameConfig, GameState } from '@tentaclaire/shared';
 
 import type { EngineEvent } from './events.js';
 import { cellIndex, createEmptyRevealed, setCells, startingPosition, torchCells } from './grid.js';
+import { applyDirection } from './movement.js';
 
 export interface GameEngine {
   /** Avance l'horloge du moteur ; `nowMs` est l'horodatage courant (injecté par l'appelant). */
   tick(nowMs: number): void;
+  /** Entrée d'un joueur (`pseudo`, pour le feed). Ignorée si la partie n'est pas `running`. */
+  handleInput(direction: Direction, pseudo: string): void;
   /** `reset|paused -> running`. Ignoré depuis toute autre phase. */
   launch(): void;
   /** `running -> paused`. Ignoré depuis toute autre phase. */
@@ -20,6 +23,10 @@ export interface GameEngine {
   setPlayerCount(count: number): void;
 }
 
+function cloneCharacter(character: CharacterState): CharacterState {
+  return { pos: { ...character.pos }, invincibleUntil: character.invincibleUntil, facing: character.facing };
+}
+
 export function createGame(
   initialConfig: GameConfig,
   rng: () => number,
@@ -28,6 +35,7 @@ export function createGame(
   let config = initialConfig;
   const events: EngineEvent[] = [];
   let lastTickAt: number | null = null;
+  let cooldownUntil = 0;
 
   const state: GameState = {
     phase: 'idle',
@@ -62,6 +70,7 @@ export function createGame(
     state.timerRemainingMs = config.timerSeconds * 1000;
     state.cooldownRemainingMs = 0;
     state.ghosts = [];
+    cooldownUntil = 0;
     return changed;
   }
 
@@ -91,6 +100,35 @@ export function createGame(
       }
     },
 
+    handleInput(direction: Direction, pseudo: string): void {
+      if (state.phase !== 'running') return;
+
+      if (config.movementMode === 'chaos') {
+        if (now() < cooldownUntil) return; // cooldown actif : ignoré, ne consomme rien
+
+        const target = applyDirection(state.character.pos, direction, state.cols, state.rows, false);
+        if (target === null) return; // mur : ignoré, ne consomme pas le cooldown (Gameplay §1)
+
+        cooldownUntil = now() + config.chaosCooldownMs;
+        state.character.pos = target;
+        state.character.facing = direction;
+
+        const revealIndices = torchCells(target, config.torchRadius, state.cols, state.rows).map((p) =>
+          cellIndex(p.col, p.row, state.cols),
+        );
+        const revealedChanges = setCells(state.revealed, revealIndices, true);
+
+        events.push({ type: 'character_moved', character: cloneCharacter(state.character) });
+        if (revealedChanges.length > 0) {
+          events.push({
+            type: 'revealed_changed',
+            changes: revealedChanges.map((index) => ({ index, revealed: true })),
+          });
+        }
+        events.push({ type: 'input_accepted', pseudo, direction });
+      }
+    },
+
     launch(): void {
       if (state.phase === 'reset') {
         state.phase = 'running';
@@ -117,6 +155,8 @@ export function createGame(
     },
 
     getState(): GameState {
+      state.cooldownRemainingMs =
+        config.movementMode === 'chaos' ? Math.max(0, cooldownUntil - now()) : 0;
       return state;
     },
 

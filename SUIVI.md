@@ -41,11 +41,24 @@ Tableau de bord du développement de Tentaclaire, tenu à jour ticket par ticket
 
 Vérification manuelle de fin de lot (definition of done) : partie jouable de bout en bout sur le conteneur de production réel — `curl` pour l'auth/config/contrôles admin, script `socket.io-client` pour un joueur (hello → join → input → déplacement confirmé par `state_delta`).
 
+## Lot 3 — Écran géant
+
+| Ticket | Description | Statut | Date | Commit |
+|--------|--------------|--------|------|--------|
+| 3.1 | Connexion et état — useSocket, applyStateDelta, reconnexion | Terminé | 2026-08-03 | `fd729e0` |
+| 3.2 | Renderer canvas — plateau, brouillard animé, letterbox/DPR | Terminé | 2026-08-03 | `f3725fd` |
+| 3.3 | Rendu personnage et fantômes — interpolation, clignotement, sautillement | Terminé | 2026-08-03 | `4d50885` |
+| 3.4 | Timer et superpositions de phase | Terminé | 2026-08-03 | `aaa503b` |
+| 3.5 | Panneau QR Code | Terminé | 2026-08-03 | `0bf668f` |
+| 3.6 | Panneau feed d'activité | Terminé | 2026-08-03 | `d7cab6a` |
+| 3.7 | Plein écran et confort | Terminé | 2026-08-03 | `37f2f0f` |
+
+Vérification navigateur : chaque ticket visuel vérifié via Chromium piloté (conteneur `mcr.microsoft.com/playwright` en `--network host`, pas d'accès root sur `serveur_dev` pour installer Chromium nativement — voir DECISIONS.md). Restent à vérifier humainement : rendu à distance façon écran de bar, fluidité perçue des animations, scan QR Code avec un vrai smartphone, rendu sur un vrai écran 4K.
+
 ## Lots suivants
 
 | Lot | Contenu | Statut |
 |-----|---------|--------|
-| Lot 3 | Écran géant | À faire |
 | Lot 4 | Manette mobile | À faire |
 | Lot 5 | Dashboard admin | À faire |
 | Lot 6 | Thèmes visuels | À faire |

@@ -27,7 +27,8 @@ export interface SocketsDeps {
   getActiveImageUrl(): string | null;
 }
 
-function buildSnapshot(deps: SocketsDeps): FullSnapshot {
+/** Exporté pour être réutilisé après un `reset()` piloté par l'admin (ticket 2.6). */
+export function buildSnapshot(deps: SocketsDeps): FullSnapshot {
   return {
     config: deps.getPublicConfig(),
     state: deps.game.getState(),

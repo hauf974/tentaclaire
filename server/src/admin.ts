@@ -1,9 +1,11 @@
+import type { FullSnapshot } from '@tentaclaire/shared';
 import type { FastifyInstance } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 
 import type { AdminAuth } from './adminAuth.js';
 import type { ConfigStore } from './config.js';
 import { toPublicConfig } from './config.js';
+import type { GameEngine } from './engine/game.js';
 
 const COOKIE_NAME = 'tentaclaire_admin';
 
@@ -11,6 +13,8 @@ export interface AdminRoutesDeps {
   configStore: ConfigStore;
   adminAuth: AdminAuth;
   io: SocketIOServer;
+  game: GameEngine;
+  getSnapshot(): FullSnapshot;
 }
 
 /** Enregistre les routes REST admin (préfixe `/api/admin`) et leur garde d'authentification. */
@@ -60,5 +64,21 @@ export async function registerAdminRoutes(app: FastifyInstance, deps: AdminRoute
       deps.io.emit('config_changed', { config: toPublicConfig(deps.configStore.get()) });
     }
     return deps.configStore.get();
+  });
+
+  app.post('/api/admin/game/launch', async () => {
+    deps.game.launch();
+    return { ok: true };
+  });
+
+  app.post('/api/admin/game/pause', async () => {
+    deps.game.pause();
+    return { ok: true };
+  });
+
+  app.post('/api/admin/game/reset', async () => {
+    deps.game.reset(deps.configStore.get());
+    deps.io.emit('snapshot', deps.getSnapshot());
+    return { ok: true };
   });
 }

@@ -20,7 +20,7 @@ import { createFeed } from './feed.js';
 import { createImagesStore, registerImageRoutes, type ImagesStore } from './images.js';
 import { cloneGameState, computeStateDelta } from './realtime.js';
 import { createSessionStore, type SessionStore } from './sessions.js';
-import { registerSockets } from './sockets.js';
+import { buildSnapshot, registerSockets } from './sockets.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TICK_MS = 100;
@@ -96,9 +96,6 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
   const feed = createFeed();
   const imagesStore = createImagesStore();
 
-  await registerAdminRoutes(app, { configStore, adminAuth, io });
-  await registerImageRoutes(app, { configStore, imagesStore, uploadDir });
-
   function getActiveImageUrl(): string | null {
     const activeId = configStore.get().activeImageId;
     if (!activeId) return null;
@@ -106,13 +103,24 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
     return image ? `/uploads/${image.filename}` : null;
   }
 
-  registerSockets(io, {
+  const socketsDeps = {
     game,
     sessions,
     feed,
     getPublicConfig: () => toPublicConfig(configStore.get()),
     getActiveImageUrl,
+  };
+
+  await registerAdminRoutes(app, {
+    configStore,
+    adminAuth,
+    io,
+    game,
+    getSnapshot: () => buildSnapshot(socketsDeps),
   });
+  await registerImageRoutes(app, { configStore, imagesStore, uploadDir });
+
+  registerSockets(io, socketsDeps);
 
   await app.ready();
 

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import PhaseOverlay from '../components/PhaseOverlay.vue';
+import TimerOverlay from '../components/TimerOverlay.vue';
 import { useBoardCanvas } from '../composables/useBoardCanvas.js';
 import { useSocket } from '../composables/useSocket.js';
 
@@ -28,11 +30,17 @@ useBoardCanvas(canvasRef, boardContainerRef, state, config, activeImageUrl);
         ref="boardContainerRef"
         class="board-container"
       >
-        <canvas
-          v-if="state"
-          ref="canvasRef"
-          class="board-canvas"
-        />
+        <template v-if="state">
+          <canvas
+            ref="canvasRef"
+            class="board-canvas"
+          />
+          <TimerOverlay
+            :timer-remaining-ms="state.timerRemainingMs"
+            :phase="state.phase"
+          />
+          <PhaseOverlay :phase="state.phase" />
+        </template>
         <p
           v-else
           class="waiting"

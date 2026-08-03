@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import type { GamePhase } from '@tentaclaire/shared';
 import DirectionPad from '../components/DirectionPad.vue';
 import PseudoScreen from '../components/PseudoScreen.vue';
 import { TOKEN_STORAGE_KEY, useSocket } from '../composables/useSocket.js';
+
+const PHASE_MESSAGES: Partial<Record<GamePhase, string>> = {
+  reset: 'La partie va bientôt commencer…',
+  paused: 'Pause',
+  victory: 'Victoire ! 🎉',
+  defeat: 'Trop tard !',
+};
 
 const existingToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) ?? undefined;
 
@@ -25,6 +33,9 @@ watch(session, (value, previous) => {
     suffixNotice.value = `Ce pseudo était pris, tu es ${value.pseudo} !`;
   }
 });
+
+const phaseMessage = computed(() => (state.value ? (PHASE_MESSAGES[state.value.phase] ?? null) : null));
+const padDisabled = computed(() => reconnecting.value || state.value?.phase !== 'running');
 </script>
 
 <template>
@@ -63,7 +74,14 @@ watch(session, (value, previous) => {
       >
         {{ suffixNotice }}
       </p>
+      <p
+        v-if="phaseMessage"
+        class="phase-message"
+      >
+        {{ phaseMessage }}
+      </p>
       <DirectionPad
+        :disabled="padDisabled"
         :movement-mode="config?.movementMode ?? 'chaos'"
         :cooldown-remaining-ms="state?.cooldownRemainingMs ?? 0"
         :chaos-cooldown-ms="config?.chaosCooldownMs ?? 500"
@@ -123,6 +141,12 @@ watch(session, (value, previous) => {
 .suffix-notice {
   color: #ffcf6b;
   font-size: 0.9rem;
+}
+
+.phase-message {
+  font-size: 1.4rem;
+  font-weight: bold;
+  text-align: center;
 }
 
 .reconnect-banner {

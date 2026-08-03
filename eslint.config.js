@@ -21,6 +21,10 @@ export default tseslint.config(
       // Paramètres d'injection (rng, horloge, config) utilisés progressivement
       // au fil des tickets : seules les variables locales inutilisées comptent.
       '@typescript-eslint/no-unused-vars': ['error', { args: 'none' }],
+      // TypeScript (tsc/vue-tsc) détecte déjà les identifiants non définis, de
+      // façon plus fiable (connaît les libs DOM/Node) — no-undef désactivé
+      // pour .ts par typescript-eslint/recommended, mais pas pour .vue.
+      'no-undef': 'off',
     },
   },
 );

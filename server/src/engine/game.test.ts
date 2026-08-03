@@ -33,6 +33,12 @@ describe('createGame — phases et timer', () => {
     expect(state.revealed.some(Boolean)).toBe(true);
   });
 
+  it('setPlayerCount : passthrough pur reflété par getState()', () => {
+    expect(game.getState().playerCount).toBe(0);
+    game.setPlayerCount(12);
+    expect(game.getState().playerCount).toBe(12);
+  });
+
   it("reset() depuis 'idle' passe en 'reset', révèle la zone de départ et émet 'reset'", () => {
     game.reset();
     expect(game.getState().phase).toBe('reset');
@@ -585,5 +591,18 @@ describe('createGame — collisions et invincibilité (J10, J11)', () => {
     expect(game.getState().revealed[cellIndex(1, 0, 3)]).toBe(false);
     expect(game.getState().revealed[cellIndex(1, 1, 3)]).toBe(false);
     expect(game.getState().revealed[cellIndex(1, 2, 3)]).toBe(true); // départ, re-révélée
+  });
+
+  it("l'invincibilité expire après 2s : un tick au-delà remet invincibleUntil à null", () => {
+    const game = setupCollisionScenario('mortel_reapparition');
+    expect(game.getState().character.invincibleUntil).toBe(1500 + 2000);
+
+    clock = 3499;
+    game.tick(clock); // juste avant l'expiration
+    expect(game.getState().character.invincibleUntil).toBe(3500);
+
+    clock = 3500;
+    game.tick(clock); // expiration pile
+    expect(game.getState().character.invincibleUntil).toBeNull();
   });
 });

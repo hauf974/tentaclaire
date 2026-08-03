@@ -3,7 +3,7 @@ import type { CharacterState, Direction, GameConfig, GameState, GhostState, Posi
 import { applyCollision, checkCollision } from './collisions.js';
 import type { EngineEvent } from './events.js';
 import { chooseNextTarget, spawnGhosts } from './ghosts.js';
-import { cellIndex, createEmptyRevealed, setCells, startingPosition, torchCells } from './grid.js';
+import { cellIndex, createEmptyRevealed, isFullyRevealed, setCells, startingPosition, torchCells } from './grid.js';
 import { applyDirection, resolveVoteWindow } from './movement.js';
 
 function emptyVotes(): Record<Direction, number> {
@@ -111,12 +111,21 @@ export function createGame(
     }));
   }
 
+  /** Victoire (J12) : 100 % des cases révélées, évaluée après chaque révélation. */
+  function checkVictory(): void {
+    if (state.phase !== 'running') return;
+    if (!isFullyRevealed(state.revealed)) return;
+    state.phase = 'victory';
+    events.push({ type: 'victory' });
+  }
+
   /**
    * Vérifie une collision personnage/fantôme (J10) et l'applique selon le mode
    * configuré. Ignorée pendant l'invincibilité (J11). Appelée à chaque
    * déplacement de l'un ou l'autre (Gameplay §6).
    */
   function checkAndResolveCollision(): void {
+    if (state.phase !== 'running') return; // ex. victoire déjà déclenchée par cette même révélation
     if (state.character.invincibleUntil !== null && now() < state.character.invincibleUntil) return;
     if (!checkCollision(state.character, state.ghosts)) return;
     if (config.collisionMode === 'passif') return;
@@ -141,6 +150,7 @@ export function createGame(
     ];
     if (changes.length > 0) events.push({ type: 'revealed_changed', changes });
     if (outcome.died) events.push({ type: 'character_died' });
+    checkVictory();
   }
 
   /** Avance tous les fantômes de `elapsedMs`, gère recouvrement et changement de cible. */
@@ -198,6 +208,7 @@ export function createGame(
       });
     }
 
+    checkVictory();
     checkAndResolveCollision();
   }
 

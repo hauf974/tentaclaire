@@ -117,6 +117,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
     adminAuth,
     io,
     game,
+    imagesStore,
     getSnapshot: () => buildSnapshot(socketsDeps),
   });
   await registerImageRoutes(app, { configStore, imagesStore, uploadDir });

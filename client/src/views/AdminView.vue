@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import AdminLogin from '../components/admin/AdminLogin.vue';
+import GallerySection from '../components/admin/GallerySection.vue';
 import LivePilotage from '../components/admin/LivePilotage.vue';
 import NetworkSection from '../components/admin/NetworkSection.vue';
 import { getConfig, logout } from '../composables/useAdminApi.js';
@@ -12,7 +13,7 @@ const actionError = ref<string | null>(null);
 
 const { state } = useSocket('admin');
 const phase = computed(() => state.value?.phase);
-const { config, saved, pendingFields, patch, load: loadConfig } = useAdminConfig(phase);
+const { config, saved, pendingFields, patch, load: loadConfig, setConfig } = useAdminConfig(phase);
 
 async function checkAuth(): Promise<void> {
   try {
@@ -81,6 +82,13 @@ onMounted(checkAuth);
           :config="config"
           :pending-fields="pendingFields"
           @patch="patch"
+        />
+        <GallerySection
+          v-if="config"
+          :config="config"
+          @patch="patch"
+          @config-replaced="setConfig"
+          @action-error="(message) => (actionError = message)"
         />
         <p>Autres sections à venir</p>
       </main>

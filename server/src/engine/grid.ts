@@ -1,8 +1,6 @@
 import type { Position } from '@tentaclaire/shared';
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
+export { computeAutoGridRows } from '@tentaclaire/shared';
 
 /** Index unique d'une case dans le tableau `revealed` (convention : row * cols + col). */
 export function cellIndex(col: number, row: number, cols: number): number {
@@ -31,16 +29,6 @@ export function torchCells(pos: Position, radius: 0 | 1 | 2, cols: number, rows:
     }
   }
   return cells;
-}
-
-/**
- * Nombre de lignes en mode grille automatique, calculé pour obtenir des
- * cases carrées d'après le ratio de l'image (G4). Le moteur ne l'appelle
- * pas lui-même : c'est Lot 2, qui connaît les dimensions de l'image
- * active, qui résout `gridRows` avant de construire/réinitialiser le jeu.
- */
-export function computeAutoGridRows(cols: number, imageWidth: number, imageHeight: number): number {
-  return clamp(Math.round((cols * imageHeight) / imageWidth), 5, 50);
 }
 
 /** Grille de brouillard initiale : toutes les cases masquées. */

@@ -3,11 +3,11 @@ import { unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { GalleryImage } from '@tentaclaire/shared';
+import { computeAutoGridRows } from '@tentaclaire/shared';
 import type { FastifyInstance } from 'fastify';
 import { imageSize } from 'image-size';
 
 import type { ConfigStore } from './config.js';
-import { computeAutoGridRows } from './engine/grid.js';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 Mo (G2)
 

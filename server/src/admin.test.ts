@@ -3,7 +3,7 @@ import type { ConfigChangedPayload } from '@tentaclaire/shared';
 import { type Socket, io as ioClient } from 'socket.io-client';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildServer, type BuiltServer } from './app.js';
-import { createTempUploadDir, removeTempDir } from './testSupport.js';
+import { createTempUploadDir, multipartBody, removeTempDir, TINY_PNG } from './testSupport.js';
 
 const ADMIN_PASSWORD = 'test-password';
 
@@ -150,6 +150,38 @@ describe('authentification et config admin (ticket 2.4)', () => {
 
     built.game.handleInput('up', 'Alex');
     expect(built.game.getState().cooldownRemainingMs).toBeGreaterThan(4000);
+  });
+
+  it("un changement de gridCols en mode auto recalcule gridRows tout de suite, pas seulement à l'activation (ticket 5.4, G4)", async () => {
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ adminPassword: ADMIN_PASSWORD, uploadDir });
+    const cookie = await login(built);
+
+    const { body, contentType } = multipartBody('carre.png', 'image/png', TINY_PNG); // image 1x1 : lignes = colonnes
+    const upload = await built.app.inject({
+      method: 'POST',
+      url: '/api/admin/images',
+      headers: { cookie, 'content-type': contentType },
+      payload: body,
+    });
+    const imageId = upload.json().id as string;
+
+    await built.app.inject({
+      method: 'PUT',
+      url: `/api/admin/images/${imageId}/activate`,
+      headers: { cookie },
+    });
+    expect(built.configStore.get().gridRows).toBe(built.configStore.get().gridCols);
+
+    const response = await built.app.inject({
+      method: 'PUT',
+      url: '/api/admin/config',
+      headers: { cookie },
+      payload: { gridCols: 22 },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(built.configStore.get().gridCols).toBe(22);
+    expect(built.configStore.get().gridRows).toBe(22); // recalculé, pas seulement à l'activation
   });
 
   it('logout invalide le cookie (ticket 5.1)', async () => {

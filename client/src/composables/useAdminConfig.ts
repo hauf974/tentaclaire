@@ -19,6 +19,8 @@ export interface UseAdminConfigResult {
   patch(fields: Partial<GameConfig>): void;
   /** Charge (ou recharge) la config depuis le serveur — à appeler explicitement une fois authentifié. */
   load(): Promise<void>;
+  /** Remplace la config locale par une valeur déjà à jour côté serveur (ex. après activation d'image, qui recalcule gridRows) — pas de PUT. */
+  setConfig(next: GameConfig): void;
 }
 
 /**
@@ -85,5 +87,9 @@ export function useAdminConfig(phase?: Ref<GamePhase | undefined>): UseAdminConf
     });
   }
 
-  return { config, saved, pendingFields, error, patch, load };
+  function setConfig(next: GameConfig): void {
+    config.value = next;
+  }
+
+  return { config, saved, pendingFields, error, patch, load, setConfig };
 }

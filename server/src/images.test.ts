@@ -2,24 +2,9 @@ import { defaultGameConfig } from '@tentaclaire/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildServer, type BuiltServer } from './app.js';
 import { detectImageType } from './images.js';
-import { createTempUploadDir, removeTempDir } from './testSupport.js';
+import { createTempUploadDir, multipartBody, removeTempDir, TINY_PNG } from './testSupport.js';
 
 const ADMIN_PASSWORD = 'test-password';
-
-// PNG 1x1 transparent minimal (bien connu), pour tester un upload réellement valide.
-const TINY_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-  'base64',
-);
-
-function multipartBody(filename: string, contentType: string, data: Buffer): { body: Buffer; contentType: string } {
-  const boundary = '----tentaclaireTestBoundary';
-  const head = Buffer.from(
-    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${contentType}\r\n\r\n`,
-  );
-  const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
-  return { body: Buffer.concat([head, data, tail]), contentType: `multipart/form-data; boundary=${boundary}` };
-}
 
 async function login(built: BuiltServer): Promise<string> {
   const response = await built.app.inject({

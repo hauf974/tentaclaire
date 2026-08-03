@@ -1,4 +1,5 @@
 import type { FullSnapshot } from '@tentaclaire/shared';
+import { computeAutoGridRows } from '@tentaclaire/shared';
 import type { FastifyInstance } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 
@@ -6,6 +7,7 @@ import type { AdminAuth } from './adminAuth.js';
 import type { ConfigStore } from './config.js';
 import { toPublicConfig } from './config.js';
 import type { GameEngine } from './engine/game.js';
+import type { ImagesStore } from './images.js';
 
 const COOKIE_NAME = 'tentaclaire_admin';
 
@@ -14,6 +16,7 @@ export interface AdminRoutesDeps {
   adminAuth: AdminAuth;
   io: SocketIOServer;
   game: GameEngine;
+  imagesStore: ImagesStore;
   getSnapshot(): FullSnapshot;
 }
 
@@ -70,6 +73,20 @@ export async function registerAdminRoutes(app: FastifyInstance, deps: AdminRoute
     const result = deps.configStore.update(patch);
     if (!result.ok) {
       return reply.code(400).send({ errors: result.errors });
+    }
+
+    // Grille auto (G4) : un changement de colonnes (ou le passage en mode
+    // auto) doit recalculer les lignes tout de suite, pas seulement à
+    // l'activation d'une image — sinon l'aperçu du dashboard et le prochain
+    // reset divergeraient de ce qui a été réellement saisi.
+    if ('gridCols' in patch || 'gridAuto' in patch) {
+      const current = deps.configStore.get();
+      if (current.gridAuto && current.activeImageId) {
+        const image = deps.imagesStore.get(current.activeImageId);
+        if (image) {
+          deps.configStore.update({ gridRows: computeAutoGridRows(current.gridCols, image.width, image.height) });
+        }
+      }
     }
 
     if (result.immediateChange) {

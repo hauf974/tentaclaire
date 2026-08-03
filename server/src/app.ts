@@ -11,9 +11,11 @@ import { Server as SocketIOServer } from 'socket.io';
 import type { EngineEvent } from './engine/events.js';
 import { createGame, type GameEngine } from './engine/game.js';
 import { cloneGameState, computeStateDelta } from './realtime.js';
+import { createSessionStore, type SessionStore } from './sessions.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TICK_MS = 100;
+const PRUNE_SESSIONS_MS = 60_000;
 
 const MARKER_EVENT_TYPES: ReadonlySet<string> = new Set<GameEventType>([
   'victory',
@@ -36,6 +38,7 @@ export interface BuiltServer {
   app: FastifyInstance;
   io: SocketIOServer;
   game: GameEngine;
+  sessions: SessionStore;
   stop(): Promise<void>;
 }
 
@@ -62,12 +65,12 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
 
   const io = new SocketIOServer(app.server);
   const game = createGame(config, Math.random, Date.now);
+  const sessions = createSessionStore();
 
   let lastBroadcast: ReturnType<GameEngine['getState']> | null = null;
 
   const interval = setInterval(() => {
-    // Remplacé par le vrai compteur de sessions au ticket 2.2.
-    game.setPlayerCount(0);
+    game.setPlayerCount(sessions.playerCount(Date.now()));
     game.tick(Date.now());
 
     const snapshot = cloneGameState(game.getState());
@@ -85,15 +88,20 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
     }
   }, TICK_MS);
 
+  const pruneInterval = setInterval(() => {
+    sessions.pruneExpired(Date.now());
+  }, PRUNE_SESSIONS_MS);
+
   io.on('connection', (socket) => {
     app.log.info({ id: socket.id }, 'socket connecté');
   });
 
   async function stop(): Promise<void> {
     clearInterval(interval);
+    clearInterval(pruneInterval);
     await io.close();
     await app.close();
   }
 
-  return { app, io, game, stop };
+  return { app, io, game, sessions, stop };
 }

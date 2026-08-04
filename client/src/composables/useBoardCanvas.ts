@@ -4,6 +4,7 @@ import { onMounted, onUnmounted, type ComputedRef, type Ref } from 'vue';
 import { drawBoard } from '../canvas/boardRenderer.js';
 import { createCharacterAnimator, isCharacterVisible, victoryBounceOffset } from '../canvas/characterAnimator.js';
 import { createFogAnimator } from '../canvas/fogAnimator.js';
+import { createFootprintTrail } from '../canvas/footprintTrail.js';
 import { ghostFloatOffset, ghostVisualPosition } from '../canvas/ghostVisuals.js';
 import type { ThemeManifest } from '../themes/types.js';
 
@@ -23,6 +24,7 @@ export function useBoardCanvas(
 ): void {
   const fog = createFogAnimator();
   const character = createCharacterAnimator();
+  const footprints = createFootprintTrail();
 
   let lastCols = 0;
   let lastRows = 0;
@@ -101,6 +103,8 @@ export function useBoardCanvas(
     if (!ctx) return;
 
     const now = Date.now();
+    footprints.update(s.character.pos, now, theme.value.hasFootprintTrail);
+
     drawBoard(ctx, canvas.width, canvas.height, {
       cols: s.cols,
       rows: s.rows,
@@ -109,6 +113,7 @@ export function useBoardCanvas(
       showGridOnFog: config.value?.showGridOnFog ?? true,
       showGridOnRevealed: config.value?.showGridOnRevealed ?? true,
       theme: theme.value,
+      footprints: footprints.getMarks(now),
       character: {
         visualPos: character.getVisualPos(),
         facing: character.getFacing(),

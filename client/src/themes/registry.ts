@@ -25,6 +25,7 @@ export const THEMES: Record<ThemeId, ThemeManifest> = {
     ghostShape: 'sketch',
     characterLineStyle: 'sketchy',
     revealEffect: 'fade',
+    hasFootprintTrail: true,
   },
   manoir: {
     id: 'manoir',
@@ -47,6 +48,7 @@ export const THEMES: Record<ThemeId, ThemeManifest> = {
     ghostShape: 'sheet',
     characterLineStyle: 'plain',
     revealEffect: 'fade',
+    hasFootprintTrail: false,
   },
   halloween: {
     id: 'halloween',
@@ -69,6 +71,7 @@ export const THEMES: Record<ThemeId, ThemeManifest> = {
     ghostShape: 'kawaii',
     characterLineStyle: 'plain',
     revealEffect: 'fade',
+    hasFootprintTrail: false,
   },
   cimetiere: {
     id: 'cimetiere',
@@ -91,6 +94,7 @@ export const THEMES: Record<ThemeId, ThemeManifest> = {
     ghostShape: 'spectre',
     characterLineStyle: 'plain',
     revealEffect: 'fade',
+    hasFootprintTrail: false,
   },
   neon: {
     id: 'neon',
@@ -113,5 +117,6 @@ export const THEMES: Record<ThemeId, ThemeManifest> = {
     ghostShape: 'neon-outline',
     characterLineStyle: 'glow',
     revealEffect: 'flash',
+    hasFootprintTrail: false,
   },
 };

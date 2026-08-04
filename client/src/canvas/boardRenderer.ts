@@ -2,7 +2,7 @@ import type { Direction, Position } from '@tentaclaire/shared';
 
 import type { ThemeManifest } from '../themes/types.js';
 import type { FogAnimator } from './fogAnimator.js';
-import { drawCharacterBody, drawGhostShape, fillFogCell, strokeGrid } from './themeRenderers.js';
+import { drawCharacterBody, drawFootprint, drawGhostShape, fillFogCell, strokeGrid } from './themeRenderers.js';
 
 const DIRECTION_VECTORS: Record<Direction, { dx: number; dy: number }> = {
   up: { dx: 0, dy: -1 },
@@ -23,6 +23,11 @@ export interface GhostSprite {
   floatOffset: number;
 }
 
+export interface FootprintMark {
+  pos: Position;
+  alpha: number;
+}
+
 export interface BoardScene {
   cols: number;
   rows: number;
@@ -33,6 +38,7 @@ export interface BoardScene {
   theme: ThemeManifest;
   character: CharacterSprite | null;
   ghosts: GhostSprite[];
+  footprints: FootprintMark[];
 }
 
 /** Dessine l'image de fond en `cover`, recadrée centrée sur la cible (G3). */
@@ -178,7 +184,7 @@ export function drawBoard(ctx: CanvasRenderingContext2D, width: number, height: 
       const alpha = scene.fog.getAlpha(index);
       if (alpha <= 0) continue;
       // +1px pour éviter les liserés entre cases adjacentes lors de l'arrondi.
-      fillFogCell(ctx, col * cellW, row * cellH, cellW + 1, cellH + 1, alpha, scene.theme);
+      fillFogCell(ctx, col, row, col * cellW, row * cellH, cellW + 1, cellH + 1, alpha, scene.theme);
     }
   }
 
@@ -193,6 +199,10 @@ export function drawBoard(ctx: CanvasRenderingContext2D, width: number, height: 
     scene.showGridOnRevealed,
     scene.theme,
   );
+
+  for (const footprint of scene.footprints) {
+    drawFootprint(ctx, footprint.pos, cellW, cellH, footprint.alpha, scene.theme);
+  }
 
   // Personnage et fantômes toujours visibles au-dessus du brouillard/quadrillage.
   for (const ghost of scene.ghosts) {

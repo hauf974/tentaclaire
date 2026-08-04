@@ -29,4 +29,6 @@ export interface ThemeManifest {
   ghostShape: GhostShape;
   characterLineStyle: CharacterLineStyle;
   revealEffect: RevealEffect;
+  /** Traces de pas s'estompant derrière le personnage (maraudeur uniquement). */
+  hasFootprintTrail: boolean;
 }

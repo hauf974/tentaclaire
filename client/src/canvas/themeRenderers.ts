@@ -62,6 +62,22 @@ export function fillFogCell(
     ctx.fill();
   }
 
+  if (theme.fogStyle === 'cartoon' && hash2(col, row) > 0.92) {
+    // Petites chauves-souris décoratives, éparses (déterministe par case).
+    const bx = x + w * (0.3 + hash2(col + 9, row) * 0.4);
+    const by = y + h * (0.3 + hash2(col, row + 9) * 0.4);
+    const s = Math.min(w, h) * 0.12;
+    ctx.globalAlpha = alpha * 0.5;
+    ctx.fillStyle = theme.colors.torchFlame;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.quadraticCurveTo(bx - s, by - s, bx - s * 1.6, by);
+    ctx.quadraticCurveTo(bx - s * 0.6, by - s * 0.2, bx, by);
+    ctx.quadraticCurveTo(bx + s * 0.6, by - s * 0.2, bx + s * 1.6, by);
+    ctx.quadraticCurveTo(bx + s, by - s, bx, by);
+    ctx.fill();
+  }
+
   ctx.globalAlpha = 1;
 }
 
@@ -101,6 +117,35 @@ export function strokeGrid(
         const x1 = (c + 1) * cellW + Math.sin(hash2(c + 1, r) * Math.PI * 2) * jitter;
         ctx.moveTo(x0, y + Math.sin(hash2(c, r) * 7) * jitter);
         ctx.lineTo(x1, y + Math.sin(hash2(c + 1, r) * 7) * jitter);
+      }
+    }
+    ctx.stroke();
+    return;
+  }
+
+  if (theme.gridStyle === 'cartoon-wavy') {
+    // Onde continue (pas de jitter dur) le long de chaque ligne, façon contour cartoon.
+    const amp = Math.min(cellW, cellH) * 0.08;
+    const steps = 12;
+    ctx.beginPath();
+    for (let c = 0; c <= cols; c++) {
+      const x = c * cellW;
+      for (let s = 0; s < steps * rows; s++) {
+        const t = s / steps;
+        const px = x + Math.sin(t * Math.PI * 2 + c) * amp;
+        const py = t * cellH;
+        if (s === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+    }
+    for (let r = 0; r <= rows; r++) {
+      const y = r * cellH;
+      for (let s = 0; s < steps * cols; s++) {
+        const t = s / steps;
+        const px = t * cellW;
+        const py = y + Math.sin(t * Math.PI * 2 + r) * amp;
+        if (s === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
       }
     }
     ctx.stroke();
@@ -215,6 +260,28 @@ export function drawGhostShape(
     ctx.ellipse(cx - size * 0.28, cy - size * 0.1, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
     ctx.ellipse(cx + size * 0.28, cy - size * 0.1, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
     ctx.fill();
+    return;
+  }
+
+  if (theme.ghostShape === 'kawaii') {
+    // Tout rond, mignon : gros yeux, joues roses.
+    ctx.fillStyle = theme.colors.ghostFill;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.95, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = theme.colors.ghostAccent;
+    ctx.beginPath();
+    ctx.arc(cx - size * 0.32, cy - size * 0.05, size * 0.16, 0, Math.PI * 2);
+    ctx.arc(cx + size * 0.32, cy - size * 0.05, size * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(cx - size * 0.55, cy + size * 0.25, size * 0.14, 0, Math.PI * 2);
+    ctx.arc(cx + size * 0.55, cy + size * 0.25, size * 0.14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
     return;
   }
 

@@ -86,6 +86,20 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Bui
   // peut déjà avoir été enregistré ci-dessus pour le client).
   await app.register(fastifyStatic, { root: uploadDir, prefix: '/uploads/', decorateReply: false });
 
+  // Fallback SPA : /screen, /play, /admin (et toute route inconnue, gérée
+  // côté client par la 404 de Vue Router) ne correspondent à aucun fichier
+  // réel de client/dist — sans ce handler, une navigation directe ou un
+  // rechargement de page y renvoyait un 404 brut au lieu de l'app (le QR
+  // Code pointe vers une URL absolue /play : un smartphone qui le scanne
+  // fait une vraie navigation HTTP, pas un routage côté client).
+  app.setNotFoundHandler((request, reply) => {
+    const isApiOrUploads = request.url.startsWith('/api/') || request.url.startsWith('/uploads/');
+    if (request.method === 'GET' && !isApiOrUploads && existsSync(clientDist)) {
+      return reply.sendFile('index.html');
+    }
+    return reply.code(404).send({ error: 'not found' });
+  });
+
   // `app.server` (le http.Server sous-jacent) existe dès la construction de
   // l'instance Fastify, avant même `app.ready()` — nécessaire ici car les
   // routes admin (enregistrées avant `ready()`) ont besoin de `io` pour

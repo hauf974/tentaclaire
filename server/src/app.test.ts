@@ -73,3 +73,29 @@ describe('boucle serveur (ticket 2.1)', () => {
     expect(timerValues[timerValues.length - 1]).toBeLessThan(timerValues[0]);
   });
 });
+
+describe('fallback SPA (ticket 7.4)', () => {
+  it('sert index.html sur une navigation directe vers /screen, /play, /admin ou une route inconnue', async () => {
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ uploadDir });
+
+    for (const url of ['/screen', '/play', '/admin', '/une-route-inconnue']) {
+      const response = await built.app.inject({ method: 'GET', url });
+      expect(response.statusCode, `GET ${url}`).toBe(200);
+      expect(response.headers['content-type']).toMatch(/html/);
+    }
+  });
+
+  it('renvoie un vrai 404 JSON pour une route API ou upload inconnue (pas index.html)', async () => {
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ uploadDir });
+
+    const apiResponse = await built.app.inject({ method: 'GET', url: '/api/route-inconnue' });
+    expect(apiResponse.statusCode).toBe(404);
+    expect(apiResponse.headers['content-type']).not.toMatch(/html/);
+
+    const uploadResponse = await built.app.inject({ method: 'GET', url: '/uploads/fichier-inconnu.png' });
+    expect(uploadResponse.statusCode).toBe(404);
+    expect(uploadResponse.headers['content-type']).not.toMatch(/html/);
+  });
+});

@@ -62,3 +62,8 @@ Monorepo npm workspaces :
 - `e2e/` — scénarios Playwright
 
 Voir `SUIVI.md` pour l'avancement du développement et `DECISIONS.md` pour le journal des micro-décisions d'implémentation.
+
+## Crédits
+
+- **Polices** : IM Fell English, Caudex, Playfair Display, Creepster, Cormorant, Press Start 2P — Google Fonts, licence [SIL Open Font License 1.1](https://scripts.sil.org/OFL), embarquées au build via `@fontsource/*` (aucun CDN à l'exécution).
+- **Sprites et textures** (personnage, fantômes, brouillard, quadrillage) : dessinés en primitives Canvas 2D, sans bibliothèque d'icônes ni asset externe.

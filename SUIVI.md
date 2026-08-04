@@ -81,9 +81,23 @@ Vérification navigateur : chaque ticket vérifié via Chromium piloté (voir DE
 
 Vérification navigateur : chaque ticket piloté depuis le dashboard lui-même (pas seulement `curl`), avec `/screen` ouvert en parallèle pour confirmer les effets croisés (QR, grille, quadrillage). Trois gaps pré-existants corrigés en cours de route (même catégorie que `qrUrl`/`PublicConfig` aux Lots 3-4) : `launch()` n'adoptait jamais de config (C6), `gridRows` ne se recalculait qu'à l'activation d'image, et un vrai bug de rendu Lot 3 où `showGridOnFog`/`showGridOnRevealed` n'étaient pas réellement indépendants (grille dessinée sous le brouillard visible en transparence). Restent à vérifier humainement : un exploitant néophyte configure et lance une partie complète sans documentation (jugement humain), utilisabilité tactile sur tablette réelle.
 
+## Lot 6 — Thèmes visuels
+
+| Ticket | Description | Statut | Date | Commit |
+|--------|--------------|--------|------|--------|
+| 6.1 | Infrastructure de thèmes — manifests, `useTheme`, polices `@fontsource`, `boardRenderer` paramétré | Terminé | 2026-08-04 | `78e0060` |
+| 6.2 | Sprites communs (personnage) — silhouette D4 constante, variation de trait par thème | Terminé | 2026-08-04 | `58ab370` |
+| 6.3 | Thème `maraudeur` (défaut) — parchemin moucheté, grille à l'encre, fantôme esquissé, traces de pas | Terminé | 2026-08-04 | `a7517c4` |
+| 6.4 | Thème `manoir` — damas, fantôme drap classique | Terminé | 2026-08-04 | `b402d56` |
+| 6.5 | Thème `halloween` — chauves-souris, grille ondulée cartoon, fantôme kawaii | Terminé | 2026-08-04 | `fc4b086` |
+| 6.6 | Thème `cimetiere` — brume en dérive lente, fantôme spectre, correctif torche (couleur chaude) | Terminé | 2026-08-04 | `37e78fa` |
+| 6.7 | Thème `neon` — grille glow, fantôme contour lumineux, flash de révélation | Terminé | 2026-08-04 | `bce6fae` |
+| 6.8 | Vignettes du dashboard — captures réelles des 5 thèmes | Terminé | 2026-08-04 | `93b04cf` |
+
+Vérification navigateur : chaque thème capturé via Chromium piloté sur une grille dédiée, `/screen` et `/play` ouverts en parallèle pour confirmer la bascule à chaud sur les deux surfaces. FPS mesuré sur 2s de `requestAnimationFrame` avec 20 fantômes sur les deux thèmes signalés coûteux par la fiche : `neon` 60,5 fps, `cimetiere` 60,3 fps. Un bug de rendu Lot 3 (quadrillage par état de case, cf. Lot 5) et une couleur de torche incohérente avec la fiche (`cimetiere`) corrigés en cours de route. Aucun asset copyrighté : sprites en primitives Canvas 2D originales, polices Google Fonts (SIL OFL) créditées dans `README.md`. Reste à vérifier humainement : validation visuelle des 5 thèmes par Arnaud (explicitement prévue par la fiche — captures fournies), ressenti de fluidité réel sur un vrai écran/projecteur de bar.
+
 ## Lots suivants
 
 | Lot | Contenu | Statut |
 |-----|---------|--------|
-| Lot 6 | Thèmes visuels | À faire |
 | Lot 7 | E2E, finitions et déploiement | À faire |

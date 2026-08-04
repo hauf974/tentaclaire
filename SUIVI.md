@@ -96,8 +96,19 @@ Vérification navigateur : chaque ticket piloté depuis le dashboard lui-même (
 
 Vérification navigateur : chaque thème capturé via Chromium piloté sur une grille dédiée, `/screen` et `/play` ouverts en parallèle pour confirmer la bascule à chaud sur les deux surfaces. FPS mesuré sur 2s de `requestAnimationFrame` avec 20 fantômes sur les deux thèmes signalés coûteux par la fiche : `neon` 60,5 fps, `cimetiere` 60,3 fps. Un bug de rendu Lot 3 (quadrillage par état de case, cf. Lot 5) et une couleur de torche incohérente avec la fiche (`cimetiere`) corrigés en cours de route. Aucun asset copyrighté : sprites en primitives Canvas 2D originales, polices Google Fonts (SIL OFL) créditées dans `README.md`. Reste à vérifier humainement : validation visuelle des 5 thèmes par Arnaud (explicitement prévue par la fiche — captures fournies), ressenti de fluidité réel sur un vrai écran/projecteur de bar.
 
-## Lots suivants
+## Lot 7 — E2E, finitions et déploiement
 
-| Lot | Contenu | Statut |
-|-----|---------|--------|
-| Lot 7 | E2E, finitions et déploiement | À faire |
+| Ticket | Description | Statut | Date | Commit |
+|--------|--------------|--------|------|--------|
+| 7.4a | Correctif SPA fallback (bloquant) — `setNotFoundHandler`, route 404 Vue Router | Terminé | 2026-08-04 | `55d5689` |
+| 7.1 | Scénario E2E nominal — configuration admin, deux joueurs, victoire sur les 3 surfaces | Terminé | 2026-08-04 | `21e7e74` |
+| 7.2 | Scénarios E2E secondaires — défaite, démocratie, pause/reprise, reconnexion, collision mortelle | Terminé | 2026-08-04 | `0fd6c5b` |
+| 7.3 | Test de charge — 50 joueurs, 5 min, p95 = 97ms, `docs/charge.md` | Terminé | 2026-08-04 | `9dda8eb` |
+| 7.4b | Finitions — favicon, endpoint de session (zéro erreur console), relecture français | Terminé | 2026-08-04 | `5250ad0` |
+| 7.5 | Documentation finale — README exploitation au bar, `DECISIONS.md` relu/complété, `CHANGELOG.md` | Terminé | 2026-08-04 | `7e9bc1d` |
+| 7.7 | (Optionnel) GitHub Actions — lint + build + test sur push/PR | Terminé | 2026-08-04 | `14c38b5` |
+| 7.6 | Déploiement `serveur_dev` | À faire (nécessite confirmation) | — | — |
+
+Découverte critique en préparant ce lot : la build de production (`node server/dist/index.js`, jamais testée en navigation directe jusqu'ici — tous les lots précédents vérifiaient via le serveur dev Vite, qui a son propre fallback SPA) renvoyait un 404 brut sur `/screen`, `/play`, `/admin` en navigation directe — bloquant pour le déploiement puisque le QR Code pointe vers une URL absolue. Corrigé en tout premier (7.4a) avant le reste du lot. Suite E2E complète (7/7, nominal + 5 secondaires) verte et stable sur plusieurs exécutions dans `docker-compose.test.yml`. Test de charge réel (pas simulé) : 50 joueurs, 5 minutes, p95 = 97 ms (< 200 ms), zéro déconnexion, mémoire stable. Reste à faire : déploiement réel sur `serveur_dev` (7.6), qui nécessite une confirmation explicite (machine partagée hébergeant d'autres services, mot de passe admin à choisir) et un test humain final (vraie partie jouée depuis un smartphone par Arnaud).
+
+Tous les lots de développement (0 à 7, hors déploiement 7.6) sont terminés. Il ne reste que le déploiement réel sur `serveur_dev` (7.6), en attente de confirmation.

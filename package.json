@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test --config=e2e/playwright.config.ts",
+    "test:load": "node scripts/loadTest.mjs",
     "dev:server": "npm run dev -w server",
     "dev:client": "npm run dev -w client"
   },

@@ -9,12 +9,14 @@ import { useBoardCanvas } from '../composables/useBoardCanvas.js';
 import { useFullscreen } from '../composables/useFullscreen.js';
 import { useIdleCursor } from '../composables/useIdleCursor.js';
 import { useSocket } from '../composables/useSocket.js';
+import { useTheme } from '../composables/useTheme.js';
 
 const { socket, connected, reconnecting, state, config, activeImageUrl, feed } = useSocket('screen');
+const { manifest: theme } = useTheme(config);
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const boardContainerRef = ref<HTMLElement | null>(null);
-useBoardCanvas(canvasRef, boardContainerRef, state, config, activeImageUrl);
+useBoardCanvas(canvasRef, boardContainerRef, state, config, activeImageUrl, theme);
 
 const phase = computed(() => state.value?.phase);
 const activityEntries = useActivityFeed(socket, feed, phase);
@@ -78,9 +80,9 @@ const idleCursor = useIdleCursor();
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: #10131a;
-  color: #eee;
-  font-family: sans-serif;
+  background: var(--theme-bg, #10131a);
+  color: var(--theme-text, #eee);
+  font-family: var(--theme-font-body, sans-serif);
   cursor: default;
 }
 
@@ -111,7 +113,7 @@ const idleCursor = useIdleCursor();
   min-width: 200px;
   display: flex;
   flex-direction: column;
-  background: #171b26;
+  background: var(--theme-panel-bg, #171b26);
   padding: 1rem;
   box-sizing: border-box;
 }

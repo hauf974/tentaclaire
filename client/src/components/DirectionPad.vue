@@ -103,8 +103,8 @@ const padStyle = computed(() => ({ '--vote-duration': `${props.democracyWindowMs
   font-size: 2.5rem;
   border: none;
   border-radius: 16px;
-  background: #2a3040;
-  color: #eee;
+  background: var(--theme-panel-bg, #2a3040);
+  color: var(--theme-text, #eee);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -140,7 +140,7 @@ const padStyle = computed(() => ({ '--vote-duration': `${props.democracyWindowMs
 }
 
 .btn:active {
-  background: #6c8cff;
+  background: var(--theme-accent, #6c8cff);
   transform: scale(0.95);
 }
 

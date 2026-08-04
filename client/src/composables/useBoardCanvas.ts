@@ -1,10 +1,11 @@
 import type { GamePhase, GameState, PublicConfig } from '@tentaclaire/shared';
-import { onMounted, onUnmounted, type Ref } from 'vue';
+import { onMounted, onUnmounted, type ComputedRef, type Ref } from 'vue';
 
 import { drawBoard } from '../canvas/boardRenderer.js';
 import { createCharacterAnimator, isCharacterVisible, victoryBounceOffset } from '../canvas/characterAnimator.js';
 import { createFogAnimator } from '../canvas/fogAnimator.js';
 import { ghostFloatOffset, ghostVisualPosition } from '../canvas/ghostVisuals.js';
+import type { ThemeManifest } from '../themes/types.js';
 
 /**
  * Boucle de rendu du plateau : dimensionne le canvas en letterbox au ratio de
@@ -18,6 +19,7 @@ export function useBoardCanvas(
   state: Ref<GameState | null>,
   config: Ref<PublicConfig | null>,
   activeImageUrl: Ref<string | null>,
+  theme: ComputedRef<ThemeManifest>,
 ): void {
   const fog = createFogAnimator();
   const character = createCharacterAnimator();
@@ -106,6 +108,7 @@ export function useBoardCanvas(
       backgroundImage,
       showGridOnFog: config.value?.showGridOnFog ?? true,
       showGridOnRevealed: config.value?.showGridOnRevealed ?? true,
+      theme: theme.value,
       character: {
         visualPos: character.getVisualPos(),
         facing: character.getFacing(),

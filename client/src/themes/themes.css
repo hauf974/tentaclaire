@@ -1,0 +1,60 @@
+/*
+ * Variables CSS par thème, consommées par les composants DOM (superpositions,
+ * feed, manette). Les couleurs du canvas (brouillard, grille, sprites) sont
+ * définies séparément dans registry.ts (ThemeManifest), lu directement par
+ * boardRenderer.ts — Canvas 2D ne lit pas les custom properties CSS.
+ */
+
+:root {
+  --theme-bg: #10131a;
+  --theme-panel-bg: #171b26;
+  --theme-text: #eeeeee;
+  --theme-accent: #6c8cff;
+  --theme-font-display: sans-serif;
+  --theme-font-body: sans-serif;
+}
+
+.theme-maraudeur {
+  --theme-bg: #e8d5a9;
+  --theme-panel-bg: #d6bc7d;
+  --theme-text: #3b2a1a;
+  --theme-accent: #8b2f2f;
+  --theme-font-display: 'IM Fell English', 'Caudex', serif;
+  --theme-font-body: 'Caudex', serif;
+}
+
+.theme-manoir {
+  --theme-bg: #2a1a3a;
+  --theme-panel-bg: #20142c;
+  --theme-text: #e8dcc9;
+  --theme-accent: #c9a84c;
+  --theme-font-display: 'Playfair Display', serif;
+  --theme-font-body: 'Playfair Display', serif;
+}
+
+.theme-halloween {
+  --theme-bg: #1a1a1a;
+  --theme-panel-bg: #241a2e;
+  --theme-text: #f2e6d8;
+  --theme-accent: #f28c28;
+  --theme-font-display: 'Creepster', cursive;
+  --theme-font-body: system-ui, sans-serif;
+}
+
+.theme-cimetiere {
+  --theme-bg: #0e1a2b;
+  --theme-panel-bg: #0a1420;
+  --theme-text: #d7e2ec;
+  --theme-accent: #9fb4c7;
+  --theme-font-display: 'Cormorant', serif;
+  --theme-font-body: 'Cormorant', serif;
+}
+
+.theme-neon {
+  --theme-bg: #0a0a0f;
+  --theme-panel-bg: #120a18;
+  --theme-text: #f0f0ff;
+  --theme-accent: #26f7ff;
+  --theme-font-display: 'Press Start 2P', monospace;
+  --theme-font-body: system-ui, sans-serif;
+}

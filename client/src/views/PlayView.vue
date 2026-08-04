@@ -4,6 +4,7 @@ import type { GamePhase } from '@tentaclaire/shared';
 import DirectionPad from '../components/DirectionPad.vue';
 import PseudoScreen from '../components/PseudoScreen.vue';
 import { TOKEN_STORAGE_KEY, useSocket } from '../composables/useSocket.js';
+import { useTheme } from '../composables/useTheme.js';
 
 const PHASE_MESSAGES: Partial<Record<GamePhase, string>> = {
   reset: 'La partie va bientôt commencer…',
@@ -18,6 +19,7 @@ const { connected, reconnecting, ready, state, config, session, join, sendInput 
   'player',
   existingToken,
 );
+useTheme(config);
 
 const pendingPseudo = ref<string | null>(null);
 const suffixNotice = ref<string | null>(null);
@@ -100,9 +102,9 @@ const padDisabled = computed(() => reconnecting.value || state.value?.phase !== 
   overflow: hidden;
   overscroll-behavior: none;
   box-sizing: border-box;
-  background: #10131a;
-  color: #eee;
-  font-family: sans-serif;
+  background: var(--theme-bg, #10131a);
+  color: var(--theme-text, #eee);
+  font-family: var(--theme-font-body, sans-serif);
   display: flex;
   flex-direction: column;
   align-items: center;

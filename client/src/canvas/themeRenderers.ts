@@ -78,6 +78,17 @@ export function fillFogCell(
     ctx.fill();
   }
 
+  if (theme.revealEffect === 'flash' && alpha < 0.95) {
+    // Flash lumineux au moment précis de la révélation : intensité qui monte
+    // à mesure que la case finit de s'effacer (alpha -> 0), invisible une
+    // fois la case pleinement révélée (alpha = 0, la boucle appelante ne
+    // dessine même plus cette case).
+    const intensity = (1 - alpha) * (1 - alpha);
+    ctx.globalAlpha = intensity * 0.5;
+    ctx.fillStyle = theme.colors.torchFlame;
+    ctx.fillRect(x, y, w, h);
+  }
+
   ctx.globalAlpha = 1;
 }
 
@@ -183,6 +194,25 @@ export function strokeGrid(
       }
     }
     ctx.stroke();
+    return;
+  }
+
+  if (theme.gridStyle === 'neon-glow') {
+    // Glow limité aux traits (shadowBlur coûteux uniquement ici, jamais sur tout le canvas).
+    ctx.save();
+    ctx.shadowColor = theme.colors.grid;
+    ctx.shadowBlur = Math.min(cellW, cellH) * 0.25;
+    ctx.beginPath();
+    for (let c = 0; c <= cols; c++) {
+      ctx.moveTo(c * cellW, 0);
+      ctx.lineTo(c * cellW, height);
+    }
+    for (let r = 0; r <= rows; r++) {
+      ctx.moveTo(0, r * cellH);
+      ctx.lineTo(width, r * cellH);
+    }
+    ctx.stroke();
+    ctx.restore();
     return;
   }
 
@@ -336,6 +366,30 @@ export function drawGhostShape(
     ctx.quadraticCurveTo(cx + size * 0.5, cy + size * 0.7, cx + size * 0.4, cy - size * 0.1);
     ctx.closePath();
     ctx.fill();
+    return;
+  }
+
+  if (theme.ghostShape === 'neon-outline') {
+    // Contour lumineux façon arcade : remplissage sombre, trait glow (shadowBlur limité à la forme).
+    ctx.save();
+    ctx.shadowColor = theme.colors.ghostAccent;
+    ctx.shadowBlur = size * 0.6;
+    ctx.fillStyle = theme.colors.ghostFill;
+    ctx.strokeStyle = theme.colors.ghostAccent;
+    ctx.lineWidth = Math.max(1, size * 0.12);
+    ctx.beginPath();
+    ctx.arc(cx, cy - size * 0.1, size * 0.75, Math.PI, 0);
+    ctx.lineTo(cx + size * 0.75, cy + size * 0.6);
+    const bumps = 3;
+    for (let i = bumps; i >= 0; i--) {
+      const bx = cx + size * 0.75 - (i / bumps) * size * 1.5;
+      const bxPrev = cx + size * 0.75 - ((i + 1) / bumps) * size * 1.5;
+      ctx.quadraticCurveTo((bx + bxPrev) / 2, cy + size * 0.95, bx, cy + size * 0.6);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
     return;
   }
 

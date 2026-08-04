@@ -44,6 +44,24 @@ export function fillFogCell(
     }
   }
 
+  if (theme.fogStyle === 'damask') {
+    // Motif damas : petit losange par case, alterné en taille/opacité selon la parité (col+row).
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const parity = (col + row) % 2 === 0;
+    const dw = w * (parity ? 0.32 : 0.22);
+    const dh = h * (parity ? 0.32 : 0.22);
+    ctx.globalAlpha = alpha * 0.5;
+    ctx.fillStyle = theme.colors.fogFillSecondary;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - dh);
+    ctx.lineTo(cx + dw, cy);
+    ctx.lineTo(cx, cy + dh);
+    ctx.lineTo(cx - dw, cy);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   ctx.globalAlpha = 1;
 }
 
@@ -174,6 +192,29 @@ export function drawGhostShape(
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    return;
+  }
+
+  if (theme.ghostShape === 'sheet') {
+    // Drap classique : dôme arrondi, bas échancré (scalloped), yeux ovales.
+    const bumps = 4;
+    ctx.fillStyle = theme.colors.ghostFill;
+    ctx.beginPath();
+    ctx.arc(cx, cy - size * 0.15, size * 0.85, Math.PI, 0);
+    ctx.lineTo(cx + size * 0.85, cy + size * 0.55);
+    for (let i = bumps; i >= 0; i--) {
+      const bx = cx + size * 0.85 - (i / bumps) * size * 1.7;
+      const bxPrev = cx + size * 0.85 - ((i + 1) / bumps) * size * 1.7;
+      ctx.quadraticCurveTo((bx + bxPrev) / 2, cy + size, bx, cy + size * 0.55);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = theme.colors.ghostAccent;
+    ctx.beginPath();
+    ctx.ellipse(cx - size * 0.28, cy - size * 0.1, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + size * 0.28, cy - size * 0.1, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
     return;
   }
 

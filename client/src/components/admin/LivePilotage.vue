@@ -29,6 +29,14 @@ const canLaunch = computed(() => props.phase === 'reset' || props.phase === 'pau
 const canPause = computed(() => props.phase === 'running');
 const gameInProgress = computed(() => props.phase === 'running' || props.phase === 'paused');
 
+// « Lancer » n'est activable que depuis reset/paused (le moteur l'ignore
+// sinon) : un rappel explicite évite de laisser le bouton grisé sans
+// explication pour un admin qui n'a pas encore cliqué Réinitialiser.
+const launchHint = computed(() => {
+  if (canLaunch.value || props.phase === 'running') return null;
+  return 'Cliquez sur « Réinitialiser » pour préparer la partie avant de lancer.';
+});
+
 async function handle(action: () => Promise<unknown>): Promise<void> {
   try {
     await action();
@@ -63,28 +71,36 @@ function onReset(): void {
       <span class="timer">{{ formattedTimer }}</span>
       <span class="players">{{ playerCount }} joueur{{ playerCount === 1 ? '' : 's' }} connecté{{ playerCount === 1 ? '' : 's' }}</span>
     </div>
-    <div class="actions">
-      <button
-        type="button"
-        :disabled="!canLaunch"
-        @click="onLaunch"
+    <div class="actions-column">
+      <div class="actions">
+        <button
+          type="button"
+          :disabled="!canLaunch"
+          @click="onLaunch"
+        >
+          Lancer
+        </button>
+        <button
+          type="button"
+          :disabled="!canPause"
+          @click="onPause"
+        >
+          Pause
+        </button>
+        <button
+          type="button"
+          class="danger"
+          @click="onReset"
+        >
+          Réinitialiser
+        </button>
+      </div>
+      <p
+        v-if="launchHint"
+        class="launch-hint"
       >
-        Lancer
-      </button>
-      <button
-        type="button"
-        :disabled="!canPause"
-        @click="onPause"
-      >
-        Pause
-      </button>
-      <button
-        type="button"
-        class="danger"
-        @click="onReset"
-      >
-        Réinitialiser
-      </button>
+        {{ launchHint }}
+      </p>
     </div>
   </section>
 </template>
@@ -148,9 +164,23 @@ function onReset(): void {
   font-size: 0.9rem;
 }
 
+.actions-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
 .actions {
   display: flex;
   gap: 0.6rem;
+}
+
+.launch-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #a87d1f;
+  text-align: right;
 }
 
 .actions button {

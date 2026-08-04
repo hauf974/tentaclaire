@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: '/play' },
+    { path: '/', redirect: '/screen' },
     { path: '/screen', component: () => import('../views/ScreenView.vue'), meta: { title: 'Tentaclaire — Écran' } },
     { path: '/play', component: () => import('../views/PlayView.vue'), meta: { title: 'Tentaclaire — Manette' } },
     {

@@ -4,7 +4,11 @@ const PORT = Number(process.env.PORT ?? 3000);
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  // Un seul serveur applicatif partagé par toute la suite (état en mémoire,
+  // T4) : jamais de parallélisme entre tests, sous peine d'interférences
+  // (config/partie modifiées par un scénario pendant qu'un autre l'observe).
+  fullyParallel: false,
+  workers: 1,
   webServer: {
     command: 'node server/dist/index.js',
     cwd: '..',

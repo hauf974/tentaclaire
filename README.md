@@ -24,6 +24,23 @@ curl -f http://localhost:3000/api/health
 
 L'application est alors accessible sur `http://localhost:3000` (ou l'IP du serveur), en accès direct comme derrière un reverse proxy (URLs relatives, WebSocket same-origin).
 
+## Exploitation au bar, pas à pas
+
+Une fois le serveur démarré (section précédente), pour monter une soirée sans documentation supplémentaire :
+
+1. **Brancher l'écran/vidéoprojecteur** sur un PC ou une box connectée au même réseau que le serveur, ouvrir un navigateur en plein écran sur `http://<ip-du-serveur>:3000/screen` (cliquer sur l'écran ou appuyer sur `F` bascule en plein écran natif).
+2. **Se connecter au dashboard admin** depuis un autre appareil (portable, tablette) : `http://<ip-du-serveur>:3000/admin`, saisir le mot de passe défini dans `.env` (`ADMIN_PASSWORD`).
+3. **Configurer la partie** dans le dashboard :
+   - *Réseau* : renseigner l'URL du QR Code (l'adresse `http://<ip-du-serveur>:3000/play` que les joueurs vont scanner) — le QR s'affiche immédiatement sur `/screen`.
+   - *Galerie* : glisser-déposer l'image mystère du jour, cliquer « Utiliser ».
+   - *Grille*, *Partie*, *Déplacements*, *Fantômes* : ajuster selon le public (grille plus petite et fantômes désactivés pour un groupe qui découvre le jeu, par exemple).
+   - *Thème visuel* : choisir l'ambiance du soir (Carte du Maraudeur, Manoir hanté, Halloween, Cimetière, Néon).
+4. **Lancer** : bouton « Réinitialiser » (prépare le plateau) puis « Lancer ». Le compte à rebours démarre.
+5. **Faire scanner le QR Code** affiché sur l'écran géant : chaque joueur arrive directement sur l'écran pseudo (`/play`), choisit un nom, puis sa manette à quatre boutons.
+6. Entre deux parties : « Réinitialiser » puis « Lancer » relance immédiatement avec la configuration en cours (les joueurs restent connectés, pas besoin de re-scanner).
+
+Rappel (T4) : rien n'est persisté à part les images de la galerie — un redémarrage du serveur revient à la configuration par défaut.
+
 ## Développement (hot-reload)
 
 ```bash
@@ -41,6 +58,8 @@ docker compose -f docker-compose.test.yml up --abort-on-container-exit
 
 - Service `unit` : tests unitaires et d'intégration (Vitest)
 - Service `e2e` : scénarios de bout en bout (Playwright)
+
+Test de charge (50 joueurs simulés) : `npm run test:load` contre un serveur déjà lancé — voir `docs/charge.md` pour la méthode et le dernier rapport.
 
 ## Variables d'environnement
 

@@ -2,7 +2,7 @@ import type { Direction, Position } from '@tentaclaire/shared';
 
 import type { ThemeManifest } from '../themes/types.js';
 import type { FogAnimator } from './fogAnimator.js';
-import { drawGhostShape, fillFogCell, strokeGrid } from './themeRenderers.js';
+import { drawCharacterBody, drawGhostShape, fillFogCell, strokeGrid } from './themeRenderers.js';
 
 const DIRECTION_VECTORS: Record<Direction, { dx: number; dy: number }> = {
   up: { dx: 0, dy: -1 },
@@ -127,10 +127,7 @@ function drawCharacter(
   const cy = (sprite.visualPos.row + 0.5 + sprite.bounceOffset) * cellH;
   const radius = Math.min(cellW, cellH) * 0.35;
 
-  ctx.fillStyle = theme.colors.characterFill;
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fill();
+  drawCharacterBody(ctx, cx, cy, radius, theme);
 
   ctx.strokeStyle = theme.colors.characterAccent;
   ctx.lineWidth = Math.max(1, radius * 0.12);

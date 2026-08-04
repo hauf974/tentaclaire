@@ -50,6 +50,55 @@ export function strokeGrid(
   ctx.stroke();
 }
 
+/**
+ * Corps du personnage (D4 : silhouette ronde constante entre thèmes) avec
+ * variation de trait par thème : contour irrégulier à l'encre (`sketchy`,
+ * jitter déterministe sur l'angle — pas de RNG par frame, sinon le tracé
+ * scintillerait) ou lumineux (`glow`, `shadowBlur` limité à cette forme).
+ */
+export function drawCharacterBody(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  theme: ThemeManifest,
+): void {
+  if (theme.characterLineStyle === 'glow') {
+    ctx.save();
+    ctx.shadowColor = theme.colors.characterAccent;
+    ctx.shadowBlur = radius * 0.8;
+    ctx.fillStyle = theme.colors.characterFill;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  if (theme.characterLineStyle === 'sketchy') {
+    const segments = 24;
+    const jitter = radius * 0.06;
+    ctx.fillStyle = theme.colors.characterFill;
+    ctx.beginPath();
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const r = radius + Math.sin(angle * 7) * jitter;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  ctx.fillStyle = theme.colors.characterFill;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 /** Silhouette d'un fantôme centrée sur (cx, cy), taille `size`. */
 export function drawGhostShape(
   ctx: CanvasRenderingContext2D,

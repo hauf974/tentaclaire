@@ -38,6 +38,20 @@ afterEach(async () => {
 });
 
 describe('authentification et config admin (ticket 2.4)', () => {
+  it('GET /api/admin/session renvoie toujours 200, authenticated selon le cookie (ticket 7.4)', async () => {
+    uploadDir = createTempUploadDir();
+    built = await buildServer({ adminPassword: ADMIN_PASSWORD, uploadDir });
+
+    const withoutCookie = await built.app.inject({ method: 'GET', url: '/api/admin/session' });
+    expect(withoutCookie.statusCode).toBe(200);
+    expect(withoutCookie.json()).toEqual({ authenticated: false });
+
+    const cookie = await login(built);
+    const withCookie = await built.app.inject({ method: 'GET', url: '/api/admin/session', headers: { cookie } });
+    expect(withCookie.statusCode).toBe(200);
+    expect(withCookie.json()).toEqual({ authenticated: true });
+  });
+
   it('accès refusé sans cookie', async () => {
     uploadDir = createTempUploadDir();
     built = await buildServer({ adminPassword: ADMIN_PASSWORD, uploadDir });

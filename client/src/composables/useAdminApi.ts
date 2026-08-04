@@ -38,6 +38,11 @@ export function getConfig(): Promise<GameConfig> {
   return request('/api/admin/config');
 }
 
+/** Toujours 200 (jamais 401) — à utiliser pour vérifier l'authentification sans requête en échec. */
+export function checkSession(): Promise<{ authenticated: boolean }> {
+  return request('/api/admin/session');
+}
+
 export function updateConfig(patch: Record<string, unknown>): Promise<GameConfig> {
   return request('/api/admin/config', { method: 'PUT', body: JSON.stringify(patch) });
 }

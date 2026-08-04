@@ -48,11 +48,19 @@ export async function registerAdminRoutes(app: FastifyInstance, deps: AdminRoute
     return { ok: true };
   });
 
+  // Toujours 200 (jamais 401) : le dashboard l'appelle au montage pour
+  // décider login vs contenu, sans provoquer une requête en échec (bruit
+  // dans la console navigateur — ticket 7.4).
+  app.get('/api/admin/session', async (request) => ({
+    authenticated: deps.adminAuth.isValid(request.cookies[COOKIE_NAME], Date.now()),
+  }));
+
   app.addHook('preHandler', async (request, reply) => {
     if (
       !request.url.startsWith('/api/admin/') ||
       request.url === '/api/admin/login' ||
-      request.url === '/api/admin/logout'
+      request.url === '/api/admin/logout' ||
+      request.url === '/api/admin/session'
     ) {
       return;
     }

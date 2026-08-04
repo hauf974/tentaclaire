@@ -7,7 +7,7 @@ import LivePilotage from '../components/admin/LivePilotage.vue';
 import MovementSection from '../components/admin/MovementSection.vue';
 import NetworkSection from '../components/admin/NetworkSection.vue';
 import ThemeSection from '../components/admin/ThemeSection.vue';
-import { getConfig, logout } from '../composables/useAdminApi.js';
+import { checkSession, logout } from '../composables/useAdminApi.js';
 import { useAdminConfig } from '../composables/useAdminConfig.js';
 import { useSocket } from '../composables/useSocket.js';
 
@@ -19,13 +19,9 @@ const phase = computed(() => state.value?.phase);
 const { config, saved, pendingFields, patch, load: loadConfig, setConfig } = useAdminConfig(phase);
 
 async function checkAuth(): Promise<void> {
-  try {
-    await getConfig();
-    authenticated.value = true;
-    void loadConfig();
-  } catch {
-    authenticated.value = false;
-  }
+  const { authenticated: isAuthenticated } = await checkSession();
+  authenticated.value = isAuthenticated;
+  if (isAuthenticated) void loadConfig();
 }
 
 async function handleLogout(): Promise<void> {

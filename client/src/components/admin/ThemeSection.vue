@@ -4,13 +4,12 @@ import type { GameConfig, ThemeId } from '@tentaclaire/shared';
 defineProps<{ config: GameConfig }>();
 const emit = defineEmits<{ patch: [fields: Partial<GameConfig>] }>();
 
-/** Vignettes provisoires (couleur plate) — les vrais assets arrivent au Lot 6. */
-const THEMES: { id: ThemeId; label: string; color: string }[] = [
-  { id: 'maraudeur', label: 'Carte du Maraudeur', color: '#b08d57' },
-  { id: 'manoir', label: 'Manoir hanté', color: '#5a4a6a' },
-  { id: 'halloween', label: 'Halloween', color: '#d9711b' },
-  { id: 'cimetiere', label: 'Cimetière', color: '#4a5a52' },
-  { id: 'neon', label: 'Néon', color: '#e91ee0' },
+const THEMES: { id: ThemeId; label: string }[] = [
+  { id: 'maraudeur', label: 'Carte du Maraudeur' },
+  { id: 'manoir', label: 'Manoir hanté' },
+  { id: 'halloween', label: 'Halloween' },
+  { id: 'cimetiere', label: 'Cimetière' },
+  { id: 'neon', label: 'Néon' },
 ];
 
 function selectTheme(id: ThemeId): void {
@@ -38,10 +37,11 @@ function onGridRevealedChange(event: Event): void {
         :class="{ active: config.theme === theme.id }"
         @click="selectTheme(theme.id)"
       >
-        <span
+        <img
           class="swatch"
-          :style="{ background: theme.color }"
-        />
+          :src="`/themes/${theme.id}.png`"
+          :alt="theme.label"
+        >
         {{ theme.label }}
       </button>
     </div>
@@ -117,8 +117,10 @@ h2:first-child {
 
 .swatch {
   width: 100%;
-  height: 48px;
+  height: 64px;
+  object-fit: cover;
   border-radius: 6px;
+  display: block;
 }
 
 .checkbox-field {

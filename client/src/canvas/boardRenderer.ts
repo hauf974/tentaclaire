@@ -2,7 +2,7 @@ import type { Direction, Position } from '@tentaclaire/shared';
 
 import type { ThemeManifest } from '../themes/types.js';
 import type { FogAnimator } from './fogAnimator.js';
-import { drawCharacterBody, drawFootprint, drawGhostShape, fillFogCell, strokeGrid } from './themeRenderers.js';
+import { drawCharacterBody, drawFootprint, drawGhostShape, drawMistOverlay, fillFogCell, strokeGrid } from './themeRenderers.js';
 
 const DIRECTION_VECTORS: Record<Direction, { dx: number; dy: number }> = {
   up: { dx: 0, dy: -1 },
@@ -39,6 +39,7 @@ export interface BoardScene {
   character: CharacterSprite | null;
   ghosts: GhostSprite[];
   footprints: FootprintMark[];
+  now: number;
 }
 
 /** Dessine l'image de fond en `cover`, recadrée centrée sur la cible (G3). */
@@ -186,6 +187,13 @@ export function drawBoard(ctx: CanvasRenderingContext2D, width: number, height: 
       // +1px pour éviter les liserés entre cases adjacentes lors de l'arrondi.
       fillFogCell(ctx, col, row, col * cellW, row * cellH, cellW + 1, cellH + 1, alpha, scene.theme);
     }
+  }
+
+  if (scene.theme.fogStyle === 'drift') {
+    ctx.save();
+    ctx.clip(cellsClipPath(scene.cols, scene.rows, width, height, scene.fog, (alpha) => alpha > 0.3));
+    drawMistOverlay(ctx, width, height, scene.now, scene.theme);
+    ctx.restore();
   }
 
   drawGridByState(

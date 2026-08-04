@@ -110,6 +110,7 @@ export function useBoardCanvas(
       rows: s.rows,
       fog,
       backgroundImage,
+      now,
       showGridOnFog: config.value?.showGridOnFog ?? true,
       showGridOnRevealed: config.value?.showGridOnRevealed ?? true,
       theme: theme.value,

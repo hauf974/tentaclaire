@@ -83,7 +83,7 @@ export const THEMES: Record<ThemeId, ThemeManifest> = {
       grid: 'rgba(159, 180, 199, 0.2)',
       characterFill: '#e8ecf1',
       characterAccent: '#0e1a2b',
-      torchFlame: '#e8ecf1',
+      torchFlame: '#e8a24c',
       ghostFill: 'rgba(159, 180, 199, 0.5)',
       ghostAccent: '#e8ecf1',
     },

@@ -81,6 +81,40 @@ export function fillFogCell(
   ctx.globalAlpha = 1;
 }
 
+/**
+ * Nappes de brume en dérive lente (thème `cimetiere`) : quelques dégradés
+ * radiaux dont la position suit une fonction sinusoïdale déphasée du temps
+ * — substitut simple et peu coûteux à un vrai bruit de Perlin, même effet
+ * perçu de dérive continue. Appelé une fois par frame, déjà découpé sur les
+ * cases fogged par l'appelant (boardRenderer.ts).
+ */
+export function drawMistOverlay(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  now: number,
+  theme: ThemeManifest,
+): void {
+  const t = now / 1000;
+  const blobCount = 4;
+  const radius = Math.min(width, height) * 0.35;
+
+  ctx.globalAlpha = 0.22;
+  for (let i = 0; i < blobCount; i++) {
+    const phase = i * 1.7;
+    const bx = width * (0.5 + Math.sin(t * 0.15 + phase) * 0.42);
+    const by = height * (0.5 + Math.cos(t * 0.11 + phase * 1.3) * 0.42);
+    const gradient = ctx.createRadialGradient(bx, by, 0, bx, by, radius);
+    gradient.addColorStop(0, theme.colors.fogFillSecondary);
+    gradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(bx, by, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
 /** Trace les lignes de grille sur toute la zone (le clip par case est géré par l'appelant). */
 export function strokeGrid(
   ctx: CanvasRenderingContext2D,
@@ -282,6 +316,26 @@ export function drawGhostShape(
     ctx.arc(cx + size * 0.55, cy + size * 0.25, size * 0.14, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
+    return;
+  }
+
+  if (theme.ghostShape === 'spectre') {
+    // Effilé, allongé, très transparent : tête ronde discrète, corps qui s'étire et s'estompe vers le bas.
+    ctx.fillStyle = theme.colors.ghostFill;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - size * 0.6, size * 0.45, size * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const gradient = ctx.createLinearGradient(cx, cy - size * 0.2, cx, cy + size * 1.3);
+    gradient.addColorStop(0, theme.colors.ghostFill);
+    gradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.4, cy - size * 0.1);
+    ctx.quadraticCurveTo(cx - size * 0.5, cy + size * 0.7, cx, cy + size * 1.3);
+    ctx.quadraticCurveTo(cx + size * 0.5, cy + size * 0.7, cx + size * 0.4, cy - size * 0.1);
+    ctx.closePath();
+    ctx.fill();
     return;
   }
 

@@ -57,17 +57,18 @@ onMounted(render);
 
 .qr-missing {
   color: #888;
-  font-size: 0.85rem;
+  font-size: 1.53rem; /* 0.85rem x1,8 (R2, lisibilité à distance de bar) */
 }
 
 .hint {
   font-weight: bold;
   margin: 0;
+  font-size: 1.8rem; /* 1rem x1,8 (R2) */
 }
 
 .count {
   color: #aaa;
-  font-size: 0.85rem;
+  font-size: 1.53rem; /* 0.85rem x1,8 (R2) */
   margin: 0;
 }
 </style>

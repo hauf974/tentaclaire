@@ -53,7 +53,7 @@ watch(
   flex-direction: column;
   gap: 0.25rem;
   padding-top: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 1.53rem; /* 0.85rem x1,8 (R2, lisibilité à distance de bar) */
 }
 
 .entry {

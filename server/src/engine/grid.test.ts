@@ -5,7 +5,7 @@ import {
   createEmptyRevealed,
   FIXED_START_POSITIONS,
   isFullyRevealed,
-  resolveStartPosition,
+  resolveStartingPosition,
   setCells,
   startingPosition,
   torchCells,
@@ -55,28 +55,30 @@ describe('startingPosition', () => {
   });
 });
 
-describe('resolveStartPosition', () => {
-  it('les 9 valeurs fixes passent inchangées, sans appel rng', () => {
+describe('resolveStartingPosition', () => {
+  it('les 9 valeurs fixes délèguent à startingPosition, sans appel rng', () => {
+    const noRng = (): number => {
+      throw new Error('rng ne devrait pas être appelé pour une position fixe');
+    };
     for (const position of FIXED_START_POSITIONS) {
-      const noRng = (): number => {
-        throw new Error('rng ne devrait pas être appelé pour une position fixe');
-      };
-      expect(resolveStartPosition(position, noRng)).toBe(position);
+      expect(resolveStartingPosition(10, 8, position, noRng)).toEqual(startingPosition(10, 8, position));
     }
   });
 
-  it('"random" consomme exactement 1 appel rng et respecte le mapping des 9 tranches', () => {
-    // bornes incluses : rng=0 -> premier élément (top-left), rng juste sous 1 -> dernier (bottom-right)
-    expect(resolveStartPosition('random', () => 0)).toBe('top-left');
-    expect(resolveStartPosition('random', () => 0.999)).toBe('bottom-right');
+  it('"random" consomme exactement 1 appel rng et tire une case quelconque de la grille (pas parmi les 9 fixes)', () => {
+    const cols = 10;
+    const rows = 8; // 80 cases, aucune ne correspond forcément à l'une des 9 positions fixes
 
-    FIXED_START_POSITIONS.forEach((expected, index) => {
-      const rngValue = (index + 0.5) / FIXED_START_POSITIONS.length; // milieu de chaque dixième
-      expect(resolveStartPosition('random', () => rngValue)).toBe(expected);
-    });
+    // bornes incluses : rng=0 -> première case (0,0), rng juste sous 1 -> dernière case (cols-1, rows-1)
+    expect(resolveStartingPosition(cols, rows, 'random', () => 0)).toEqual({ col: 0, row: 0 });
+    expect(resolveStartingPosition(cols, rows, 'random', () => 0.999)).toEqual({ col: cols - 1, row: rows - 1 });
+
+    // une case qui n'est ni un coin, ni un milieu, ni le centre : (col:3, row:2), index 23 sur 80
+    const rngValue = (23 + 0.5) / (cols * rows);
+    expect(resolveStartingPosition(cols, rows, 'random', () => rngValue)).toEqual({ col: 3, row: 2 });
 
     let calls = 0;
-    resolveStartPosition('random', () => {
+    resolveStartingPosition(cols, rows, 'random', () => {
       calls++;
       return 0;
     });

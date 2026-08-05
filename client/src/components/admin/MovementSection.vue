@@ -154,6 +154,7 @@ function pendingLabel(field: keyof GameConfig): string {
         <label
           v-for="position in FIXED_START_POSITIONS"
           :key="position.value"
+          class="start-position-option"
         >
           <input
             type="radio"
@@ -174,21 +175,25 @@ function pendingLabel(field: keyof GameConfig): string {
           </span>
           {{ position.label }}
         </label>
-      </div>
-      <label class="start-position-random">
-        <input
-          type="radio"
-          name="startPosition"
-          value="random"
-          :checked="config.startPosition === 'random'"
-          @change="onStartPositionChange"
-        >
-        <span class="random-row">
-          <span class="random-dice">🎲</span>
+        <label class="start-position-option">
+          <input
+            type="radio"
+            name="startPosition"
+            value="random"
+            :checked="config.startPosition === 'random'"
+            @change="onStartPositionChange"
+          >
+          <span class="pictogram start-pictogram random-pictogram">
+            <span
+              v-for="cell in 9"
+              :key="cell"
+              class="cell"
+            />
+            <span class="question-mark">?</span>
+          </span>
           Aléatoire
-        </span>
-        <span class="explanation">Position tirée au sort parmi les 9 à chaque lancement.</span>
-      </label>
+        </label>
+      </div>
       <span
         v-if="pendingLabel('startPosition')"
         class="pending-hint"
@@ -276,7 +281,7 @@ h2 {
   width: fit-content;
 }
 
-.start-position-grid label {
+.start-position-option {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -301,27 +306,19 @@ h2 {
   background: #ffcf6b;
 }
 
-.start-position-random {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.9rem;
+.random-pictogram {
+  position: relative;
 }
 
-.random-row {
+.question-mark {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-}
-
-.random-dice {
+  justify-content: center;
+  font-weight: bold;
   font-size: 1.1rem;
-}
-
-.start-position-random .explanation {
-  color: #888;
-  font-size: 0.78rem;
-  margin-left: 1.4rem;
+  color: #a87d1f;
 }
 
 .pending-hint {

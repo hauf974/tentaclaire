@@ -7,10 +7,7 @@ export function cellIndex(col: number, row: number, cols: number): number {
   return row * cols + col;
 }
 
-/**
- * Les 9 positions de départ fixes (R3), ordre de lecture figé (haut-gauche ->
- * bas-droite) : c'est cet ordre qui détermine le tirage de `resolveStartPosition`.
- */
+/** Les 9 positions de départ fixes (R3), ordre de lecture figé (haut-gauche -> bas-droite). */
 export const FIXED_START_POSITIONS: readonly Exclude<StartPosition, 'random'>[] = [
   'top-left',
   'top-center',
@@ -32,16 +29,21 @@ export function startingPosition(cols: number, rows: number, position: Exclude<S
 }
 
 /**
- * Résout `startPosition` en une position fixe : renvoyée telle quelle si ce
- * n'est pas `'random'` (0 appel rng, comportement bit-à-bit inchangé) ; sinon
- * tirage uniforme parmi les 9 positions fixes (1 appel rng).
+ * Résout `startPosition` en une case concrète de la grille `cols`x`rows` :
+ * pour les 9 valeurs fixes, délègue à `startingPosition` (0 appel rng,
+ * comportement bit-à-bit inchangé) ; pour `'random'`, tirage uniforme sur
+ * l'ensemble des cases de la grille (1 appel rng) — une vraie case au
+ * hasard, pas un tirage parmi les 9 positions fixes.
  */
-export function resolveStartPosition(
+export function resolveStartingPosition(
+  cols: number,
+  rows: number,
   startPosition: StartPosition,
   rng: () => number,
-): Exclude<StartPosition, 'random'> {
-  if (startPosition !== 'random') return startPosition;
-  return FIXED_START_POSITIONS[Math.floor(rng() * FIXED_START_POSITIONS.length)];
+): Position {
+  if (startPosition !== 'random') return startingPosition(cols, rows, startPosition);
+  const index = Math.floor(rng() * cols * rows);
+  return { col: index % cols, row: Math.floor(index / cols) };
 }
 
 /**

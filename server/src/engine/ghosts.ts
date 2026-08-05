@@ -63,16 +63,27 @@ function bestDirectionToward(pos: Position, target: Position, cols: number, rows
 
 /**
  * Case révélée la plus proche de `pos` en distance torique, hors la case
- * occupée par le fantôme lui-même. Égalité de distance -> plus petit index
- * `row * cols + col` (parcours croissant, `<` strict conserve le premier).
- * `null` si rien n'est révélé hors de la case du fantôme.
+ * occupée par le fantôme lui-même et hors `excludedIndices` (la zone de
+ * départ du personnage : révélée d'office, elle ne doit pas attirer les
+ * fantômes en extinction — sinon ils convergeraient systématiquement sur le
+ * point d'apparition dès le début de partie). Égalité de distance -> plus
+ * petit index `row * cols + col` (parcours croissant, `<` strict conserve le
+ * premier). `null` si rien d'autre n'est révélé.
  */
-function nearestRevealedCell(pos: Position, revealed: readonly boolean[], cols: number, rows: number): Position | null {
+function nearestRevealedCell(
+  pos: Position,
+  revealed: readonly boolean[],
+  cols: number,
+  rows: number,
+  excludedIndices: readonly number[],
+): Position | null {
   const selfIndex = cellIndex(pos.col, pos.row, cols);
+  const excluded = new Set(excludedIndices);
+  excluded.add(selfIndex);
   let target: Position | null = null;
   let bestDistance = Infinity;
   for (let index = 0; index < revealed.length; index++) {
-    if (!revealed[index] || index === selfIndex) continue;
+    if (!revealed[index] || excluded.has(index)) continue;
     const candidate = { col: index % cols, row: Math.floor(index / cols) };
     const distance = toroidalDistance(pos, candidate, cols, rows);
     if (distance < bestDistance) {
@@ -94,9 +105,10 @@ function nearestRevealedCell(pos: Position, revealed: readonly boolean[], cols: 
  * supplémentaire) ; les 20 % restants, direction uniforme (1 appel rng).
  * `extinction` (R1) : même tirage 80/20 (1 appel rng) ; à 80 %, direction qui
  * minimise la distance torique jusqu'à la case révélée la plus proche (même
- * mécanique de départage que la traque, aucun appel rng supplémentaire) ;
- * aucune case révélée candidate -> repli direction uniforme (1 appel rng,
- * même total que les 20 % restants).
+ * mécanique de départage que la traque, aucun appel rng supplémentaire) —
+ * `startZoneIndices` (la zone de départ du personnage) est exclue des
+ * candidates, comme la case du fantôme ; aucune case révélée candidate ->
+ * repli direction uniforme (1 appel rng, même total que les 20 % restants).
  */
 export function chooseNextTarget(
   pos: Position,
@@ -105,6 +117,7 @@ export function chooseNextTarget(
   cols: number,
   rows: number,
   revealed: readonly boolean[],
+  startZoneIndices: readonly number[],
   rng: () => number,
 ): Position {
   if (behavior === 'traque' && rng() < 0.8) {
@@ -113,7 +126,7 @@ export function chooseNextTarget(
   }
 
   if (behavior === 'extinction' && rng() < 0.8) {
-    const target = nearestRevealedCell(pos, revealed, cols, rows);
+    const target = nearestRevealedCell(pos, revealed, cols, rows, startZoneIndices);
     if (target !== null) {
       const direction = bestDirectionToward(pos, target, cols, rows);
       return applyDirection(pos, direction, cols, rows, true) as Position;

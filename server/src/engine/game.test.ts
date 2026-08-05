@@ -530,40 +530,70 @@ describe('createGame — IA extinction des feux (R1, ticket 8.1)', () => {
     clock = 0;
   });
 
-  it('un fantôme converge vers la zone révélée puis l\'éteint en la quittant', () => {
-    // Grille 5x5, torchRadius 1 : départ (2,4), zone révélée = colonnes 1-3, lignes 3-4
-    // (indices 16,17,18,21,22,23 ; 22 = case du personnage). rng toujours 0 :
-    // - spawn du fantôme : pool[0] = (0,0) (index 0, hors zone de départ)
-    // - chaque retirage 80/20 : < 0.8 -> branche extinction, jamais de repli
-    //   (la zone révélée n'est jamais totalement éteinte dans ce test)
-    const rng = fixedRng(0);
+  it("la zone de départ (révélée d'office) n'attire jamais un fantôme extinction : repli aléatoire tant que rien d'autre n'est exploré", () => {
+    // Grille 5x5, torchRadius 0 : départ (2,4), seule case révélée = 22 (la case du
+    // personnage). rng: [0 -> spawn en (0,0) ; 0 -> tirage 80/20 (tente la branche
+    // extinction) ; 0.51 -> repli, la seule case révélée (22) étant exclue comme
+    // zone de départ, aucune candidate ne subsiste].
+    const rng = sequenceRng([0, 0, 0.51]);
     const game = createGame(
-      config({ gridCols: 5, gridRows: 5, torchRadius: 1, ghostCount: 1, ghostSpeed: 1, ghostBehavior: 'extinction' }),
+      config({ gridCols: 5, gridRows: 5, torchRadius: 0, ghostCount: 1, ghostSpeed: 1, ghostBehavior: 'extinction' }),
       rng,
       () => clock,
     );
     game.reset();
     expect(game.getState().character.pos).toEqual({ col: 2, row: 4 });
     expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 });
-    expect(game.getState().revealed[cellIndex(1, 4, 5)]).toBe(true); // cellule visée par le fantôme
 
     game.launch();
     game.tick(0);
     game.drainEvents();
 
-    clock = 1000; // (0,0) -> (0,4) [up, tore] : direction qui rapproche le plus de (1,4)
+    // Si la zone de départ attirait le fantôme, la cible serait (1,0) (direction
+    // 'right', la plus courte vers la case 22) au lieu du repli 'left' -> (4,0).
+    clock = 1000;
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 4, row: 0 });
+  });
+
+  it('un fantôme converge vers une case explorée hors de la zone de départ (branchement de bout en bout)', () => {
+    // La mécanique fine (départage, tore, exclusion) est couverte exhaustivement
+    // au niveau chooseNextTarget (server/src/engine/ghosts.test.ts) ; ce test
+    // vérifie seulement que game.ts branche bien `startZoneIndices` de bout en
+    // bout : après une exploration du personnage, une case nouvellement révélée
+    // hors zone de départ redevient une cible valide et attire le fantôme.
+    const rng = sequenceRng([0]); // toujours < 0.8 (branche extinction) ; jamais de repli dans ce test
+    const game = createGame(
+      config({ gridCols: 5, gridRows: 5, torchRadius: 0, ghostCount: 1, ghostSpeed: 1, ghostBehavior: 'extinction' }),
+      rng,
+      () => clock,
+    );
+    game.reset();
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 });
+    // Repli initial (seule la zone de départ, exclue, est révélée) : direction 'up' (rng=0 partout).
+    expect(game.getState().ghosts[0].target).toEqual({ col: 0, row: 4 });
+
+    game.launch();
+    game.tick(0);
+    game.drainEvents();
+
+    // Le personnage explore : (2,4) -> (2,3), révèle la case 17, hors zone de départ (22).
+    clock = 500;
+    game.handleInput('up', 'A');
+    expect(game.getState().revealed[cellIndex(2, 3, 5)]).toBe(true);
+
+    // (0,0) -> (0,4) [repli déjà ciblé] ; (2,3) est maintenant l'unique candidate
+    // hors zone de départ -> re-ciblage 'right' vers (1,4), qui s'en rapproche.
+    clock = 1000;
     game.tick(clock);
     expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 4 });
+    expect(game.getState().ghosts[0].target).toEqual({ col: 1, row: 4 });
 
-    clock = 2000; // (0,4) -> (1,4) [right] : le fantôme atteint la case révélée visée
+    // (0,4) -> (1,4) ; re-ciblage 'up' vers (1,3), encore plus proche de (2,3).
+    clock = 2000;
     game.tick(clock);
     expect(game.getState().ghosts[0].pos).toEqual({ col: 1, row: 4 });
-    expect(game.getState().revealed[cellIndex(1, 4, 5)]).toBe(true); // pas encore quittée
-
-    clock = 3000; // (1,4) -> (1,3) : en quittant (1,4), le recouvrement (J8) l'éteint
-    game.tick(clock);
-    expect(game.getState().ghosts[0].pos).toEqual({ col: 1, row: 3 });
-    expect(game.getState().revealed[cellIndex(1, 4, 5)]).toBe(false); // éteinte par le fantôme
+    expect(game.getState().ghosts[0].target).toEqual({ col: 1, row: 3 });
   });
 });
 
@@ -616,8 +646,9 @@ describe('createGame — point de départ configurable (R3, ticket 8.3)', () => 
     // réellement (C6), comme le fait la route admin /api/admin/game/reset.
     const rng = sequenceRng([0.5, 0, 0]);
     const game = createGame(config(), rng, () => clock);
-    // rng: [0.5 -> 'center' (résolution, avant tout le reste), 0 -> spawn du
-    // fantôme (pool hors zone de départ 'center'), 0 -> cible initiale du fantôme]
+    // rng: [0.5 -> tirage uniforme sur les 25 cases de la grille 5x5 :
+    // floor(0.5*25)=12 -> (col:2, row:2), avant tout le reste ; 0 -> spawn du
+    // fantôme (pool hors de cette zone de départ) ; 0 -> cible initiale du fantôme]
     game.reset(
       config({
         gridCols: 5,
@@ -629,7 +660,7 @@ describe('createGame — point de départ configurable (R3, ticket 8.3)', () => 
         startPosition: 'random',
       }),
     );
-    expect(game.getState().character.pos).toEqual({ col: 2, row: 2 }); // 'center' sur une grille 5x5
+    expect(game.getState().character.pos).toEqual({ col: 2, row: 2 }); // case 12/25 tirée sur la grille 5x5 (pas une des 9 positions fixes)
     expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 }); // spawn hors de la zone de départ tirée
 
     game.launch();
@@ -654,14 +685,14 @@ describe('createGame — point de départ configurable (R3, ticket 8.3)', () => 
     let calls = 0;
     const rng = () => {
       calls++;
-      return 0; // -> 'top-left' (premier élément de FIXED_START_POSITIONS)
+      return 0; // -> première case de la grille, (col:0, row:0)
     };
     const game = createGame(config({ ghostCount: 0, startPosition: 'random' }), rng, () => clock);
 
     calls = 0; // ne compter que les appels de reset() (la construction initiale utilise la config par défaut, fixe)
     game.reset();
     expect(calls).toBe(1); // aucun fantôme à spawner : seul le tirage de la position consomme le rng
-    expect(game.getState().character.pos).toEqual({ col: 0, row: 0 }); // top-left sur la grille 6x6 par défaut du helper config()
+    expect(game.getState().character.pos).toEqual({ col: 0, row: 0 }); // (0,0) sur la grille 6x6 par défaut du helper config()
   });
 });
 

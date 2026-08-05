@@ -59,29 +59,29 @@ describe('chooseNextTarget (IA aléatoire, ticket 1.5)', () => {
     const pos = { col: 0, row: 0 };
     const character = { col: 5, row: 5 };
     // floor(rng*4) : 0->up, 1.04/4->down, 2.04/4->left, 3.04/4->right
-    expect(chooseNextTarget(pos, 'aleatoire', character, 10, 10, [], () => 0)).toEqual({ col: 0, row: 9 }); // up, tore
-    expect(chooseNextTarget(pos, 'aleatoire', character, 10, 10, [], () => 0.26)).toEqual({ col: 0, row: 1 }); // down
-    expect(chooseNextTarget(pos, 'aleatoire', character, 10, 10, [], () => 0.51)).toEqual({ col: 9, row: 0 }); // left, tore
-    expect(chooseNextTarget(pos, 'aleatoire', character, 10, 10, [], () => 0.76)).toEqual({ col: 1, row: 0 }); // right
+    expect(chooseNextTarget(pos, 'aleatoire', character, 10, 10, [], [], () => 0)).toEqual({ col: 0, row: 9 }); // up, tore
+    expect(chooseNextTarget(pos, 'aleatoire', character, 10, 10, [], [], () => 0.26)).toEqual({ col: 0, row: 1 }); // down
+    expect(chooseNextTarget(pos, 'aleatoire', character, 10, 10, [], [], () => 0.51)).toEqual({ col: 9, row: 0 }); // left, tore
+    expect(chooseNextTarget(pos, 'aleatoire', character, 10, 10, [], [], () => 0.76)).toEqual({ col: 1, row: 0 }); // right
   });
 });
 
 describe('chooseNextTarget (IA traque, ticket 1.6)', () => {
   it('choisit la direction qui minimise la distance directe au personnage', () => {
     // personnage 2 colonnes à droite, sans intérêt pour le tore : right est optimal sans ambiguïté
-    const target = chooseNextTarget({ col: 0, row: 0 }, 'traque', { col: 2, row: 0 }, 10, 10, [], sequenceRng([0]));
+    const target = chooseNextTarget({ col: 0, row: 0 }, 'traque', { col: 2, row: 0 }, 10, 10, [], [], sequenceRng([0]));
     expect(target).toEqual({ col: 1, row: 0 });
   });
 
   it('reconnaît le chemin le plus court via le tore (J9)', () => {
     // personnage en (9,0) : à 9 cases en direct, à 1 case via le bord -> left (tore) est optimal
-    const target = chooseNextTarget({ col: 0, row: 0 }, 'traque', { col: 9, row: 0 }, 10, 10, [], sequenceRng([0]));
+    const target = chooseNextTarget({ col: 0, row: 0 }, 'traque', { col: 9, row: 0 }, 10, 10, [], [], sequenceRng([0]));
     expect(target).toEqual({ col: 9, row: 0 });
   });
 
   it('20 % du temps, direction aléatoire au lieu de traquer', () => {
     // rng >= 0.8 -> bascule sur la branche aléatoire ; ensuite floor(0.51*4)=2 -> left
-    const target = chooseNextTarget({ col: 5, row: 5 }, 'traque', { col: 0, row: 0 }, 10, 10, [], sequenceRng([0.9, 0.51]));
+    const target = chooseNextTarget({ col: 5, row: 5 }, 'traque', { col: 0, row: 0 }, 10, 10, [], [], sequenceRng([0.9, 0.51]));
     expect(target).toEqual({ col: 4, row: 5 }); // left, alors que traquer aurait donné up ou left selon la distance
   });
 
@@ -92,7 +92,7 @@ describe('chooseNextTarget (IA traque, ticket 1.6)', () => {
 
     let previousDistance = toroidalDistance(pos, character, 10, 10);
     for (let i = 0; i < 10; i++) {
-      pos = chooseNextTarget(pos, 'traque', character, 10, 10, [], rng);
+      pos = chooseNextTarget(pos, 'traque', character, 10, 10, [], [], rng);
       const distance = toroidalDistance(pos, character, 10, 10);
       expect(distance).toBeLessThanOrEqual(previousDistance);
       previousDistance = distance;
@@ -108,7 +108,7 @@ describe('chooseNextTarget (IA extinction des feux, ticket 8.1)', () => {
     // fantôme en (0,0), grille 10x10, une seule case révélée en (2,0) -> right est optimal
     const revealed = new Array(100).fill(false);
     revealed[2] = true; // (col:2, row:0)
-    const target = chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, sequenceRng([0]));
+    const target = chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, [], sequenceRng([0]));
     expect(target).toEqual({ col: 1, row: 0 });
   });
 
@@ -121,7 +121,7 @@ describe('chooseNextTarget (IA extinction des feux, ticket 8.1)', () => {
     revealed[posA.row * cols + posA.col] = true;
     revealed[posB.row * cols + posB.col] = true;
     // les deux cases sont à distance égale (2) du fantôme -> la plus petit index (53, posA, à gauche) l'emporte
-    const target = chooseNextTarget({ col: 5, row: 5 }, 'extinction', character, cols, rows, revealed, sequenceRng([0]));
+    const target = chooseNextTarget({ col: 5, row: 5 }, 'extinction', character, cols, rows, revealed, [], sequenceRng([0]));
     expect(target).toEqual({ col: 4, row: 5 }); // left, en direction de posA
   });
 
@@ -129,7 +129,7 @@ describe('chooseNextTarget (IA extinction des feux, ticket 8.1)', () => {
     // fantôme en (0,0), grille 10x10, case révélée en (9,0) : 9 cases en direct, 1 case via le bord -> left
     const revealed = new Array(100).fill(false);
     revealed[9] = true; // (col:9, row:0)
-    const target = chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, sequenceRng([0]));
+    const target = chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, [], sequenceRng([0]));
     expect(target).toEqual({ col: 9, row: 0 });
   });
 
@@ -138,14 +138,58 @@ describe('chooseNextTarget (IA extinction des feux, ticket 8.1)', () => {
     const revealed = new Array(100).fill(false);
     revealed[0] = true; // (col:0, row:0), la case du fantôme
     // rng: 0 -> <0.8 (branche extinction) ; puis 0 -> floor(0*4)=0 -> up
-    const target = chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, sequenceRng([0, 0]));
+    const target = chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, [], sequenceRng([0, 0]));
     expect(target).toEqual({ col: 0, row: 9 }); // up, tore
+  });
+
+  it('exclut la zone de départ du personnage des candidates (ne doit pas attirer les fantômes)', () => {
+    // grille 10x10, zone de départ = colonnes 0..2 de la ligne 0 (indices 0,1,2), toutes révélées.
+    // Une autre case révélée hors zone de départ, plus loin : (col:6,row:0), index 6.
+    const revealed = new Array(100).fill(false);
+    revealed[0] = true;
+    revealed[1] = true;
+    revealed[2] = true;
+    revealed[6] = true;
+    const startZoneIndices = [0, 1, 2];
+    // fantôme en (4,0) : sans exclusion, la case 2 (distance 2) serait plus proche que la case 6 (distance 2 aussi,
+    // égalité) -> l'exclusion doit écarter 0/1/2 et ne laisser que 6 comme candidate, donc direction 'right'.
+    const target = chooseNextTarget(
+      { col: 4, row: 0 },
+      'extinction',
+      character,
+      10,
+      10,
+      revealed,
+      startZoneIndices,
+      sequenceRng([0]),
+    );
+    expect(target).toEqual({ col: 5, row: 0 }); // right, vers la case 6 — jamais vers la zone de départ
+  });
+
+  it('zone de départ + case du fantôme seules révélées -> aucune candidate -> repli aléatoire', () => {
+    const revealed = new Array(100).fill(false);
+    revealed[0] = true;
+    revealed[1] = true;
+    const startZoneIndices = [0, 1];
+    // fantôme sur la case 1 (dans la zone de départ elle-même, ex. spawn au bord) : seule case révélée hors de
+    // lui-même est la case 0, mais elle est dans la zone de départ -> exclue -> aucune candidate -> repli.
+    const target = chooseNextTarget(
+      { col: 1, row: 0 },
+      'extinction',
+      character,
+      10,
+      10,
+      revealed,
+      startZoneIndices,
+      sequenceRng([0, 0]),
+    );
+    expect(target).toEqual({ col: 1, row: 9 }); // up, tore (repli aléatoire)
   });
 
   it('repli direction aléatoire quand rien n\'est révélé hors de la case du fantôme', () => {
     const revealed = new Array(100).fill(false);
     // rng: 0 -> <0.8 (branche extinction, aucune candidate) ; puis 0.51 -> floor(0.51*4)=2 -> left
-    const target = chooseNextTarget({ col: 5, row: 5 }, 'extinction', character, 10, 10, revealed, sequenceRng([0, 0.51]));
+    const target = chooseNextTarget({ col: 5, row: 5 }, 'extinction', character, 10, 10, revealed, [], sequenceRng([0, 0.51]));
     expect(target).toEqual({ col: 4, row: 5 });
   });
 
@@ -153,7 +197,7 @@ describe('chooseNextTarget (IA extinction des feux, ticket 8.1)', () => {
     const revealed = new Array(100).fill(false);
     revealed[2] = true; // case révélée proche, ignorée par la branche aléatoire
     // rng >= 0.8 -> bascule direction aléatoire ; puis 0.51 -> floor(0.51*4)=2 -> left
-    const target = chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, sequenceRng([0.9, 0.51]));
+    const target = chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, [], sequenceRng([0.9, 0.51]));
     expect(target).toEqual({ col: 9, row: 0 }); // left, tore
   });
 
@@ -168,15 +212,15 @@ describe('chooseNextTarget (IA extinction des feux, ticket 8.1)', () => {
     };
 
     calls = 0;
-    chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, countingRng([0]));
+    chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, [], countingRng([0]));
     expect(calls).toBe(1); // 80 % avec candidate trouvée : 1 appel, comme traque
 
     calls = 0;
-    chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, countingRng([0.9, 0.51]));
+    chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, revealed, [], countingRng([0.9, 0.51]));
     expect(calls).toBe(2); // 20 % : 1 appel pour le tirage + 1 pour la direction, comme traque
 
     calls = 0;
-    chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, [], countingRng([0, 0.51]));
+    chooseNextTarget({ col: 0, row: 0 }, 'extinction', character, 10, 10, [], [], countingRng([0, 0.51]));
     expect(calls).toBe(2); // 80 % sans candidate (repli) : même total que la branche 20 %
   });
 });

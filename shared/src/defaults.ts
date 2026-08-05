@@ -15,6 +15,7 @@ export const defaultGameConfig: GameConfig = {
   gridRows: 10,
   showGridOnFog: true,
   showGridOnRevealed: true,
+  startPosition: 'bottom-center',
 
   // Partie
   timerSeconds: 300,

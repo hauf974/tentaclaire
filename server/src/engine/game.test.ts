@@ -567,6 +567,104 @@ describe('createGame — IA extinction des feux (R1, ticket 8.1)', () => {
   });
 });
 
+describe('createGame — point de départ configurable (R3, ticket 8.3)', () => {
+  let clock: number;
+
+  beforeEach(() => {
+    clock = 0;
+  });
+
+  it('position fixe non-défaut : zone de torche révélée au départ configuré, respawn au même endroit', () => {
+    // Grille 3x3, départ 'top-right' -> (2,0). Fantôme figé en (0,0) (vitesse
+    // 0,5, jamais de tick à élapsé non nul, cf. setupCollisionScenario ci-dessous).
+    const rng = sequenceRng([0]);
+    const game = createGame(
+      config({
+        gridCols: 3,
+        gridRows: 3,
+        torchRadius: 0,
+        ghostCount: 1,
+        ghostSpeed: 0.5,
+        collisionMode: 'mortel_reapparition',
+        startPosition: 'top-right',
+      }),
+      rng,
+      () => clock,
+    );
+    game.reset();
+    expect(game.getState().character.pos).toEqual({ col: 2, row: 0 });
+    expect(game.getState().revealed[cellIndex(2, 0, 3)]).toBe(true); // zone de torche autour du départ configuré
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 });
+
+    game.launch();
+    game.tick(0);
+    game.drainEvents();
+
+    clock = 500;
+    game.handleInput('left', 'A'); // (2,0) -> (1,0)
+    clock = 1000;
+    game.handleInput('left', 'A'); // (1,0) -> (0,0) = collision avec le fantôme
+    const events = game.drainEvents();
+
+    expect(events.filter((e) => e.type === 'character_died')).toHaveLength(1);
+    expect(game.getState().character.pos).toEqual({ col: 2, row: 0 }); // respawn à la position configurée
+  });
+
+  it('"random" : position tirée au lancement, respawn vers cette même case (pas de second tirage)', () => {
+    // Construction avec la config par défaut (startPosition 'bottom-center',
+    // fixe -> 0 appel rng) ; reset(newConfig) est le point où R3 s'applique
+    // réellement (C6), comme le fait la route admin /api/admin/game/reset.
+    const rng = sequenceRng([0.5, 0, 0]);
+    const game = createGame(config(), rng, () => clock);
+    // rng: [0.5 -> 'center' (résolution, avant tout le reste), 0 -> spawn du
+    // fantôme (pool hors zone de départ 'center'), 0 -> cible initiale du fantôme]
+    game.reset(
+      config({
+        gridCols: 5,
+        gridRows: 5,
+        torchRadius: 0,
+        ghostCount: 1,
+        ghostSpeed: 0.5,
+        collisionMode: 'mortel_reapparition',
+        startPosition: 'random',
+      }),
+    );
+    expect(game.getState().character.pos).toEqual({ col: 2, row: 2 }); // 'center' sur une grille 5x5
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 }); // spawn hors de la zone de départ tirée
+
+    game.launch();
+    game.tick(0);
+    game.drainEvents();
+
+    clock = 500;
+    game.handleInput('left', 'A'); // (2,2) -> (1,2)
+    clock = 1000;
+    game.handleInput('left', 'A'); // (1,2) -> (0,2)
+    clock = 1500;
+    game.handleInput('up', 'A'); // (0,2) -> (0,1)
+    clock = 2000;
+    game.handleInput('up', 'A'); // (0,1) -> (0,0) = collision avec le fantôme
+    const events = game.drainEvents();
+
+    expect(events.filter((e) => e.type === 'character_died')).toHaveLength(1);
+    expect(game.getState().character.pos).toEqual({ col: 2, row: 2 }); // respawn vers la même case tirée, pas un nouveau tirage
+  });
+
+  it('"random" : le tirage est consommé pendant reset(), avant tout autre appel rng (0 fantôme)', () => {
+    let calls = 0;
+    const rng = () => {
+      calls++;
+      return 0; // -> 'top-left' (premier élément de FIXED_START_POSITIONS)
+    };
+    const game = createGame(config({ ghostCount: 0, startPosition: 'random' }), rng, () => clock);
+
+    calls = 0; // ne compter que les appels de reset() (la construction initiale utilise la config par défaut, fixe)
+    game.reset();
+    expect(calls).toBe(1); // aucun fantôme à spawner : seul le tirage de la position consomme le rng
+    expect(game.getState().character.pos).toEqual({ col: 0, row: 0 }); // top-left sur la grille 6x6 par défaut du helper config()
+  });
+});
+
 describe('createGame — collisions et invincibilité (J10, J11)', () => {
   let clock: number;
 

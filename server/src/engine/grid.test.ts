@@ -3,7 +3,9 @@ import {
   cellIndex,
   computeAutoGridRows,
   createEmptyRevealed,
+  FIXED_START_POSITIONS,
   isFullyRevealed,
+  resolveStartPosition,
   setCells,
   startingPosition,
   torchCells,
@@ -18,10 +20,67 @@ describe('cellIndex', () => {
 });
 
 describe('startingPosition', () => {
-  it('place la case de départ au centre-bas (J1)', () => {
-    expect(startingPosition(10, 10)).toEqual({ col: 5, row: 9 });
-    expect(startingPosition(5, 5)).toEqual({ col: 2, row: 4 });
-    expect(startingPosition(7, 3)).toEqual({ col: 3, row: 2 });
+  it('bottom-center équivaut au comportement historique centre-bas (J1)', () => {
+    expect(startingPosition(10, 10, 'bottom-center')).toEqual({ col: 5, row: 9 });
+    expect(startingPosition(5, 5, 'bottom-center')).toEqual({ col: 2, row: 4 });
+    expect(startingPosition(7, 3, 'bottom-center')).toEqual({ col: 3, row: 2 });
+  });
+
+  it.each([
+    ['top-left', { col: 0, row: 0 }],
+    ['top-center', { col: 2, row: 0 }],
+    ['top-right', { col: 4, row: 0 }],
+    ['middle-left', { col: 0, row: 2 }],
+    ['center', { col: 2, row: 2 }],
+    ['middle-right', { col: 4, row: 2 }],
+    ['bottom-left', { col: 0, row: 4 }],
+    ['bottom-center', { col: 2, row: 4 }],
+    ['bottom-right', { col: 4, row: 4 }],
+  ] as const)('grille impaire 5x5 : %s -> %o', (position, expected) => {
+    expect(startingPosition(5, 5, position)).toEqual(expected);
+  });
+
+  it.each([
+    ['top-left', { col: 0, row: 0 }],
+    ['top-center', { col: 5, row: 0 }],
+    ['top-right', { col: 9, row: 0 }],
+    ['middle-left', { col: 0, row: 4 }],
+    ['center', { col: 5, row: 4 }],
+    ['middle-right', { col: 9, row: 4 }],
+    ['bottom-left', { col: 0, row: 7 }],
+    ['bottom-center', { col: 5, row: 7 }],
+    ['bottom-right', { col: 9, row: 7 }],
+  ] as const)('grille paire 10x8 : %s -> %o', (position, expected) => {
+    expect(startingPosition(10, 8, position)).toEqual(expected);
+  });
+});
+
+describe('resolveStartPosition', () => {
+  it('les 9 valeurs fixes passent inchangées, sans appel rng', () => {
+    for (const position of FIXED_START_POSITIONS) {
+      const noRng = (): number => {
+        throw new Error('rng ne devrait pas être appelé pour une position fixe');
+      };
+      expect(resolveStartPosition(position, noRng)).toBe(position);
+    }
+  });
+
+  it('"random" consomme exactement 1 appel rng et respecte le mapping des 9 tranches', () => {
+    // bornes incluses : rng=0 -> premier élément (top-left), rng juste sous 1 -> dernier (bottom-right)
+    expect(resolveStartPosition('random', () => 0)).toBe('top-left');
+    expect(resolveStartPosition('random', () => 0.999)).toBe('bottom-right');
+
+    FIXED_START_POSITIONS.forEach((expected, index) => {
+      const rngValue = (index + 0.5) / FIXED_START_POSITIONS.length; // milieu de chaque dixième
+      expect(resolveStartPosition('random', () => rngValue)).toBe(expected);
+    });
+
+    let calls = 0;
+    resolveStartPosition('random', () => {
+      calls++;
+      return 0;
+    });
+    expect(calls).toBe(1);
   });
 });
 

@@ -1,10 +1,30 @@
-import type { CollisionMode, GameConfig, GhostBehavior, MovementMode, PublicConfig, ThemeId } from '@tentaclaire/shared';
+import type {
+  CollisionMode,
+  GameConfig,
+  GhostBehavior,
+  MovementMode,
+  PublicConfig,
+  StartPosition,
+  ThemeId,
+} from '@tentaclaire/shared';
 import { defaultGameConfig } from '@tentaclaire/shared';
 
 const THEMES: readonly ThemeId[] = ['maraudeur', 'manoir', 'halloween', 'cimetiere', 'neon'];
 const MOVEMENT_MODES: readonly MovementMode[] = ['chaos', 'democratie'];
 const GHOST_BEHAVIORS: readonly GhostBehavior[] = ['aleatoire', 'traque', 'extinction'];
 const COLLISION_MODES: readonly CollisionMode[] = ['passif', 'mortel_reapparition', 'mortel_reinitialisation'];
+const START_POSITIONS: readonly StartPosition[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'middle-left',
+  'center',
+  'middle-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right',
+  'random',
+];
 
 /** Champs appliqués immédiatement (C6) ; les autres attendent le prochain reset/launch. */
 const IMMEDIATE_FIELDS: readonly (keyof GameConfig)[] = ['theme', 'showGridOnFog', 'showGridOnRevealed', 'qrUrl'];
@@ -31,6 +51,7 @@ const VALIDATORS: Partial<Record<keyof GameConfig, Validator>> = {
   gridRows: inRange(5, 50),
   showGridOnFog: isBoolean,
   showGridOnRevealed: isBoolean,
+  startPosition: oneOf(START_POSITIONS),
   timerSeconds: inRange(10, 3600),
   movementMode: oneOf(MOVEMENT_MODES),
   chaosCooldownMs: inRange(100, 5000),

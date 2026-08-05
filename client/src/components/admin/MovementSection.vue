@@ -24,6 +24,27 @@ function onTorchRadiusChange(event: Event): void {
   emit('patch', { torchRadius: radius });
 }
 
+const FIXED_START_POSITIONS: {
+  value: Exclude<GameConfig['startPosition'], 'random'>;
+  label: string;
+  row: 0 | 1 | 2;
+  col: 0 | 1 | 2;
+}[] = [
+  { value: 'top-left', label: 'Coin haut-gauche', row: 0, col: 0 },
+  { value: 'top-center', label: 'Haut', row: 0, col: 1 },
+  { value: 'top-right', label: 'Coin haut-droit', row: 0, col: 2 },
+  { value: 'middle-left', label: 'Gauche', row: 1, col: 0 },
+  { value: 'center', label: 'Centre', row: 1, col: 1 },
+  { value: 'middle-right', label: 'Droite', row: 1, col: 2 },
+  { value: 'bottom-left', label: 'Coin bas-gauche', row: 2, col: 0 },
+  { value: 'bottom-center', label: 'Bas', row: 2, col: 1 },
+  { value: 'bottom-right', label: 'Coin bas-droit', row: 2, col: 2 },
+];
+
+function onStartPositionChange(event: Event): void {
+  emit('patch', { startPosition: (event.target as HTMLInputElement).value as GameConfig['startPosition'] });
+}
+
 function pendingLabel(field: keyof GameConfig): string {
   return props.pendingFields.has(field) ? 'Appliqué au prochain lancement' : '';
 }
@@ -126,6 +147,53 @@ function pendingLabel(field: keyof GameConfig): string {
         class="pending-hint"
       >{{ pendingLabel('torchRadius') }}</span>
     </div>
+
+    <div class="start-position-group">
+      <span class="group-label">Point de départ</span>
+      <div class="start-position-grid">
+        <label
+          v-for="position in FIXED_START_POSITIONS"
+          :key="position.value"
+        >
+          <input
+            type="radio"
+            name="startPosition"
+            :value="position.value"
+            :checked="config.startPosition === position.value"
+            @change="onStartPositionChange"
+          >
+          <span
+            class="pictogram start-pictogram"
+          >
+            <span
+              v-for="cell in 9"
+              :key="cell"
+              class="cell"
+              :class="{ active: Math.floor((cell - 1) / 3) === position.row && (cell - 1) % 3 === position.col }"
+            />
+          </span>
+          {{ position.label }}
+        </label>
+      </div>
+      <label class="start-position-random">
+        <input
+          type="radio"
+          name="startPosition"
+          value="random"
+          :checked="config.startPosition === 'random'"
+          @change="onStartPositionChange"
+        >
+        <span class="random-row">
+          <span class="random-dice">🎲</span>
+          Aléatoire
+        </span>
+        <span class="explanation">Position tirée au sort parmi les 9 à chaque lancement.</span>
+      </label>
+      <span
+        v-if="pendingLabel('startPosition')"
+        class="pending-hint"
+      >{{ pendingLabel('startPosition') }}</span>
+    </div>
   </section>
 </template>
 
@@ -193,6 +261,67 @@ h2 {
 .cell {
   background: #ffcf6b;
   border-radius: 1px;
+}
+
+.start-position-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.start-position-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  width: fit-content;
+}
+
+.start-position-grid label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.start-pictogram {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  width: 32px;
+  height: 32px;
+}
+
+.start-pictogram .cell {
+  background: #e5e5e5;
+}
+
+.start-pictogram .cell.active {
+  background: #ffcf6b;
+}
+
+.start-position-random {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.9rem;
+}
+
+.random-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.random-dice {
+  font-size: 1.1rem;
+}
+
+.start-position-random .explanation {
+  color: #888;
+  font-size: 0.78rem;
+  margin-left: 1.4rem;
 }
 
 .pending-hint {

@@ -4,6 +4,17 @@ export type MovementMode = 'chaos' | 'democratie';
 export type GhostBehavior = 'aleatoire' | 'traque' | 'extinction';
 export type CollisionMode = 'passif' | 'mortel_reapparition' | 'mortel_reinitialisation';
 export type ThemeId = 'maraudeur' | 'manoir' | 'halloween' | 'cimetiere' | 'neon';
+export type StartPosition =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'middle-left'
+  | 'center'
+  | 'middle-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right'
+  | 'random';
 
 export interface GameConfig {
   // Réseau
@@ -16,6 +27,7 @@ export interface GameConfig {
   gridRows: number; // 5..50 (ignoré si gridAuto)
   showGridOnFog: boolean;
   showGridOnRevealed: boolean;
+  startPosition: StartPosition; // défaut 'bottom-center' (R3), appliqué au prochain lancement
 
   // Partie
   timerSeconds: number; // durée du compte à rebours (défaut 300)

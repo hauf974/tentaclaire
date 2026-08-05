@@ -1,4 +1,4 @@
-import type { Position } from '@tentaclaire/shared';
+import type { Position, StartPosition } from '@tentaclaire/shared';
 
 export { computeAutoGridRows } from '@tentaclaire/shared';
 
@@ -7,9 +7,41 @@ export function cellIndex(col: number, row: number, cols: number): number {
   return row * cols + col;
 }
 
-/** Case de départ du personnage : centre-bas de la grille (J1). */
-export function startingPosition(cols: number, rows: number): Position {
-  return { col: Math.floor(cols / 2), row: rows - 1 };
+/**
+ * Les 9 positions de départ fixes (R3), ordre de lecture figé (haut-gauche ->
+ * bas-droite) : c'est cet ordre qui détermine le tirage de `resolveStartPosition`.
+ */
+export const FIXED_START_POSITIONS: readonly Exclude<StartPosition, 'random'>[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'middle-left',
+  'center',
+  'middle-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right',
+];
+
+/** Case de départ du personnage (R3) : une des 9 positions fixes de la grille. */
+export function startingPosition(cols: number, rows: number, position: Exclude<StartPosition, 'random'>): Position {
+  const [vertical, horizontal] = position.split('-') as [string, string?];
+  const col = horizontal === 'left' ? 0 : horizontal === 'right' ? cols - 1 : Math.floor(cols / 2);
+  const row = vertical === 'top' ? 0 : vertical === 'bottom' ? rows - 1 : Math.floor(rows / 2);
+  return { col, row };
+}
+
+/**
+ * Résout `startPosition` en une position fixe : renvoyée telle quelle si ce
+ * n'est pas `'random'` (0 appel rng, comportement bit-à-bit inchangé) ; sinon
+ * tirage uniforme parmi les 9 positions fixes (1 appel rng).
+ */
+export function resolveStartPosition(
+  startPosition: StartPosition,
+  rng: () => number,
+): Exclude<StartPosition, 'random'> {
+  if (startPosition !== 'random') return startPosition;
+  return FIXED_START_POSITIONS[Math.floor(rng() * FIXED_START_POSITIONS.length)];
 }
 
 /**

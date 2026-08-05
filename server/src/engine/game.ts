@@ -1,9 +1,17 @@
-import type { CharacterState, Direction, GameConfig, GameState, GhostState, Position } from '@tentaclaire/shared';
+import type { CharacterState, Direction, GameConfig, GameState, GhostState, Position, StartPosition } from '@tentaclaire/shared';
 
 import { applyCollision, checkCollision } from './collisions.js';
 import type { EngineEvent } from './events.js';
 import { chooseNextTarget, spawnGhosts } from './ghosts.js';
-import { cellIndex, createEmptyRevealed, isFullyRevealed, setCells, startingPosition, torchCells } from './grid.js';
+import {
+  cellIndex,
+  createEmptyRevealed,
+  isFullyRevealed,
+  resolveStartPosition,
+  setCells,
+  startingPosition,
+  torchCells,
+} from './grid.js';
 import { applyDirection, resolveVoteWindow } from './movement.js';
 
 function emptyVotes(): Record<Direction, number> {
@@ -53,6 +61,10 @@ export function createGame(
   let cooldownUntil = 0;
   let votes = emptyVotes();
   let voteWindowEndsAt = 0;
+  // Résolue une fois par manche (reset()), réutilisée pour l'initialisation
+  // du plateau et pour le respawn — un seul tirage `rng` si `startPosition`
+  // vaut 'random', jamais un second en cours de partie.
+  let resolvedStartPosition: Exclude<StartPosition, 'random'> = 'bottom-center';
 
   const state: GameState = {
     phase: 'idle',
@@ -77,7 +89,7 @@ export function createGame(
     state.rows = config.gridRows;
     state.revealed = createEmptyRevealed(config.gridCols, config.gridRows);
 
-    const start = startingPosition(config.gridCols, config.gridRows);
+    const start = startingPosition(config.gridCols, config.gridRows, resolvedStartPosition);
     state.character = { pos: start, invincibleUntil: null, facing: 'down' };
 
     const startIndices = torchCells(start, config.torchRadius, config.gridCols, config.gridRows).map(
@@ -138,7 +150,7 @@ export function createGame(
     if (!checkCollision(state.character, state.ghosts)) return;
     if (config.collisionMode === 'passif') return;
 
-    const startPos = startingPosition(state.cols, state.rows);
+    const startPos = startingPosition(state.cols, state.rows, resolvedStartPosition);
     const startIndices = torchCells(startPos, config.torchRadius, state.cols, state.rows).map((p) =>
       cellIndex(p.col, p.row, state.cols),
     );
@@ -223,6 +235,7 @@ export function createGame(
 
   // État initial `idle` (avant tout reset explicite) : plateau valide mais inerte,
   // aucun événement émis (ce n'est pas encore une "vraie" réinitialisation).
+  resolvedStartPosition = resolveStartPosition(config.startPosition, rng);
   initializeBoard();
 
   return {
@@ -304,6 +317,7 @@ export function createGame(
 
     reset(newConfig?: GameConfig): void {
       if (newConfig) config = newConfig;
+      resolvedStartPosition = resolveStartPosition(config.startPosition, rng);
       const { startIndices, changed } = initializeBoard();
       spawnGhostsAt(startIndices);
       state.phase = 'reset';

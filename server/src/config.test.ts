@@ -64,6 +64,29 @@ describe('createConfigStore', () => {
     expect(store.get().ghostBehavior).toBe('extinction');
     expect(store.update({ ghostBehavior: 'invasion' }).ok).toBe(false);
   });
+
+  it('startPosition (R3) : les 10 valeurs acceptées, une valeur invalide refusée, champ non-immédiat', () => {
+    const store = createConfigStore();
+    const values = [
+      'top-left',
+      'top-center',
+      'top-right',
+      'middle-left',
+      'center',
+      'middle-right',
+      'bottom-left',
+      'bottom-center',
+      'bottom-right',
+      'random',
+    ] as const;
+    for (const value of values) {
+      const result = store.update({ startPosition: value });
+      expect(result.ok).toBe(true);
+      expect(result.immediateChange).toBe(false);
+      expect(store.get().startPosition).toBe(value);
+    }
+    expect(store.update({ startPosition: 'top' }).ok).toBe(false);
+  });
 });
 
 describe('toPublicConfig', () => {

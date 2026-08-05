@@ -114,3 +114,15 @@ Découverte critique en préparant ce lot : la build de production (`node server
 **Déploiement réel (7.6)** : confirmé par Arnaud (mot de passe admin choisi par lui, écrit dans `.env` non versionné). `docker compose up -d --build` exécuté sur `serveur_dev` (ce répertoire) — conteneur `tentaclaire-app-1` `healthy`, `curl -f http://localhost:3000/api/health` OK, `/screen`/`/play`/`/admin` vérifiés 200 en navigation directe, login admin vérifié. `PUBLIC_URL` dans `.env.example` n'est pas encore câblé côté code (documentaire uniquement, décision Lot 0) : l'URL du QR Code doit être renseignée manuellement dans le dashboard admin après déploiement. Reste à faire : partie réelle jouée par Arnaud depuis son smartphone en 4G (test humain final, acceptation explicite du ticket).
 
 Tous les lots de développement (0 à 7, hors déploiement 7.6) sont terminés. Il ne reste que le déploiement réel sur `serveur_dev` (7.6), en attente de confirmation.
+
+## Lot 8 — Retours de revue n°1
+
+| Ticket | Description | Statut | Date | Commit |
+|--------|--------------|--------|------|--------|
+| 8.1 | IA fantôme « Extinction des feux » (R1) — comportement `extinction` dans `engine/ghosts.ts`, radio admin | Terminé | 2026-08-05 | `c8ee705` |
+| 8.2 | Écran géant : polices du panneau latéral ×1,8 (R2) — `QrPanel.vue`, `FeedPanel.vue` | Terminé | 2026-08-05 | `fb77d48` |
+| 8.3 | Point de départ configurable (R3) — 9 positions fixes + « Aléatoire » (10ᵉ option confirmée), `startPosition` dans `GameConfig` | Terminé | 2026-08-05 | `c047ba0` |
+
+Trois retours de la revue humaine du 04/08/2026 (décisions R1–R3), mis en œuvre sans refonte sur l'application déjà livrée. `npm run lint` propre et suite complète verte (227 tests) après chaque ticket. Vérification navigateur pour 8.2 (Chromium piloté, conteneur `mcr.microsoft.com/playwright:v1.62.1-noble` en `--network host`, méthode du Lot 3) : panneau latéral agrandi sans débordement horizontal (`scrollWidth === clientWidth`), feed lisible et défilant. Vérification manuelle de bout en bout (8.1 + 8.3 combinés) : partie réelle en comportement `extinction` avec point de départ `center` sur une grille 8×8 — personnage effectivement au centre, fantôme visiblement attiré vers la zone révélée. Interface admin vérifiée par capture d'écran : sélecteur 3×3 du point de départ avec pictogrammes, radio « Extinction des feux » avec explication.
+
+Tous les lots (0 à 8) sont terminés.

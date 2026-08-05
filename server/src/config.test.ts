@@ -57,6 +57,13 @@ describe('createConfigStore', () => {
     expect(store.update({ torchRadius: 1 }).ok).toBe(true);
     expect(store.update({ torchRadius: 3 }).ok).toBe(false);
   });
+
+  it('accepte ghostBehavior "extinction" (R1), rejette une valeur inconnue', () => {
+    const store = createConfigStore();
+    expect(store.update({ ghostBehavior: 'extinction' }).ok).toBe(true);
+    expect(store.get().ghostBehavior).toBe('extinction');
+    expect(store.update({ ghostBehavior: 'invasion' }).ok).toBe(false);
+  });
 });
 
 describe('toPublicConfig', () => {

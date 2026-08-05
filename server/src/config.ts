@@ -3,7 +3,7 @@ import { defaultGameConfig } from '@tentaclaire/shared';
 
 const THEMES: readonly ThemeId[] = ['maraudeur', 'manoir', 'halloween', 'cimetiere', 'neon'];
 const MOVEMENT_MODES: readonly MovementMode[] = ['chaos', 'democratie'];
-const GHOST_BEHAVIORS: readonly GhostBehavior[] = ['aleatoire', 'traque'];
+const GHOST_BEHAVIORS: readonly GhostBehavior[] = ['aleatoire', 'traque', 'extinction'];
 const COLLISION_MODES: readonly CollisionMode[] = ['passif', 'mortel_reapparition', 'mortel_reinitialisation'];
 
 /** Champs appliqués immédiatement (C6) ; les autres attendent le prochain reset/launch. */

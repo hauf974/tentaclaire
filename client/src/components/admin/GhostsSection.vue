@@ -16,6 +16,13 @@ const COLLISION_EXPLANATIONS: Record<GameConfig['collisionMode'], string> = {
 const BEHAVIOR_EXPLANATIONS: Record<GameConfig['ghostBehavior'], string> = {
   aleatoire: 'Déplacement aléatoire, indépendant du personnage.',
   traque: 'Se rapproche progressivement du personnage.',
+  extinction: 'Attiré par la case découverte la plus proche, qu\'il éteint en la traversant.',
+};
+
+const BEHAVIOR_LABELS: Record<GameConfig['ghostBehavior'], string> = {
+  aleatoire: 'Aléatoire',
+  traque: 'Traque',
+  extinction: 'Extinction des feux',
 };
 
 function onCountInput(event: Event): void {
@@ -90,7 +97,7 @@ function pendingLabel(field: keyof GameConfig): string {
             :checked="config.ghostBehavior === behavior"
             @change="onBehaviorChange"
           >
-          {{ behavior === 'aleatoire' ? 'Aléatoire' : 'Traque' }}
+          {{ BEHAVIOR_LABELS[behavior] }}
         </span>
         <span class="explanation">{{ explanation }}</span>
       </label>

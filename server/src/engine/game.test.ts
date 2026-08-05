@@ -523,6 +523,50 @@ describe('createGame — fantômes : déplacement et recouvrement (J7, J8)', () 
   });
 });
 
+describe('createGame — IA extinction des feux (R1, ticket 8.1)', () => {
+  let clock: number;
+
+  beforeEach(() => {
+    clock = 0;
+  });
+
+  it('un fantôme converge vers la zone révélée puis l\'éteint en la quittant', () => {
+    // Grille 5x5, torchRadius 1 : départ (2,4), zone révélée = colonnes 1-3, lignes 3-4
+    // (indices 16,17,18,21,22,23 ; 22 = case du personnage). rng toujours 0 :
+    // - spawn du fantôme : pool[0] = (0,0) (index 0, hors zone de départ)
+    // - chaque retirage 80/20 : < 0.8 -> branche extinction, jamais de repli
+    //   (la zone révélée n'est jamais totalement éteinte dans ce test)
+    const rng = fixedRng(0);
+    const game = createGame(
+      config({ gridCols: 5, gridRows: 5, torchRadius: 1, ghostCount: 1, ghostSpeed: 1, ghostBehavior: 'extinction' }),
+      rng,
+      () => clock,
+    );
+    game.reset();
+    expect(game.getState().character.pos).toEqual({ col: 2, row: 4 });
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 0 });
+    expect(game.getState().revealed[cellIndex(1, 4, 5)]).toBe(true); // cellule visée par le fantôme
+
+    game.launch();
+    game.tick(0);
+    game.drainEvents();
+
+    clock = 1000; // (0,0) -> (0,4) [up, tore] : direction qui rapproche le plus de (1,4)
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 0, row: 4 });
+
+    clock = 2000; // (0,4) -> (1,4) [right] : le fantôme atteint la case révélée visée
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 1, row: 4 });
+    expect(game.getState().revealed[cellIndex(1, 4, 5)]).toBe(true); // pas encore quittée
+
+    clock = 3000; // (1,4) -> (1,3) : en quittant (1,4), le recouvrement (J8) l'éteint
+    game.tick(clock);
+    expect(game.getState().ghosts[0].pos).toEqual({ col: 1, row: 3 });
+    expect(game.getState().revealed[cellIndex(1, 4, 5)]).toBe(false); // éteinte par le fantôme
+  });
+});
+
 describe('createGame — collisions et invincibilité (J10, J11)', () => {
   let clock: number;
 

@@ -1,7 +1,7 @@
 // ---------- Configuration (modifiable via l'admin) ----------
 
 export type MovementMode = 'chaos' | 'democratie';
-export type GhostBehavior = 'aleatoire' | 'traque';
+export type GhostBehavior = 'aleatoire' | 'traque' | 'extinction';
 export type CollisionMode = 'passif' | 'mortel_reapparition' | 'mortel_reinitialisation';
 export type ThemeId = 'maraudeur' | 'manoir' | 'halloween' | 'cimetiere' | 'neon';
 

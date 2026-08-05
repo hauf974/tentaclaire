@@ -106,7 +106,15 @@ export function createGame(
     state.ghosts = spawned.map((s) => ({
       id: s.id,
       pos: s.pos,
-      target: chooseNextTarget(s.pos, config.ghostBehavior, state.character.pos, state.cols, state.rows, rng),
+      target: chooseNextTarget(
+        s.pos,
+        config.ghostBehavior,
+        state.character.pos,
+        state.cols,
+        state.rows,
+        state.revealed,
+        rng,
+      ),
       moveProgress: 0,
     }));
   }
@@ -182,6 +190,7 @@ export function createGame(
           state.character.pos,
           state.cols,
           state.rows,
+          state.revealed,
           rng,
         );
       }

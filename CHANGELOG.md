@@ -25,3 +25,6 @@ Cinq directions artistiques tranchées (Carte du Maraudeur, Manoir hanté, Hallo
 
 ## Lot 7 — E2E, finitions et déploiement
 Suite Playwright multi-contextes (scénario nominal + cinq scénarios secondaires), test de charge réel (50 joueurs simulés, 5 minutes, latence p95 sous le seuil), finitions (favicon, page 404, titres d'onglet, revue du français, zéro erreur console), documentation finale. Correctif bloquant découvert en testant la build de production : absence de fallback SPA côté serveur, qui aurait cassé la navigation directe vers `/screen`, `/play` et `/admin` en exploitation réelle.
+
+## Lot 8 — Retours de revue n°1
+Trois retours de la revue humaine du 04/08/2026 : troisième comportement de fantôme « Extinction des feux » (attiré par la case révélée la plus proche), polices du panneau latéral de l'écran géant agrandies de 80 % pour la lisibilité à distance de bar, point de départ du personnage configurable dans l'admin (9 positions fixes plus une option « Aléatoire »).

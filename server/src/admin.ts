@@ -1,11 +1,11 @@
-import type { FullSnapshot } from '@tentaclaire/shared';
+import type { FullSnapshot, GameConfig } from '@tentaclaire/shared';
 import { computeAutoGridRows } from '@tentaclaire/shared';
 import type { FastifyInstance } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 
 import type { AdminAuth } from './adminAuth.js';
 import type { ConfigStore } from './config.js';
-import { toPublicConfig } from './config.js';
+import { LIVE_ENGINE_FIELDS, toPublicConfig } from './config.js';
 import type { GameEngine } from './engine/game.js';
 import type { ImagesStore } from './images.js';
 
@@ -95,6 +95,18 @@ export async function registerAdminRoutes(app: FastifyInstance, deps: AdminRoute
           deps.configStore.update({ gridRows: computeAutoGridRows(current.gridCols, image.width, image.height) });
         }
       }
+    }
+
+    // Pilotage à chaud (déplacements, fantômes) : répercuté sur la partie en
+    // cours tout de suite, sans attendre un reset/launch (cf. LIVE_ENGINE_FIELDS).
+    const liveFields = LIVE_ENGINE_FIELDS.filter((key) => key in patch);
+    if (liveFields.length > 0) {
+      const current = deps.configStore.get();
+      const enginePatch: Partial<GameConfig> = {};
+      for (const key of liveFields) {
+        (enginePatch as Record<string, unknown>)[key] = current[key];
+      }
+      deps.game.updateConfig(enginePatch);
     }
 
     if (result.immediateChange) {

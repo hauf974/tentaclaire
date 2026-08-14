@@ -21,6 +21,15 @@ export interface GameEngine {
   pause(): void;
   /** Depuis n'importe quelle phase -> `reset`. Adopte `config` si fourni (C6). */
   reset(config?: GameConfig): void;
+  /**
+   * Applique `patch` au moteur EN COURS, sans attendre le prochain
+   * lancement/réinitialisation (pilotage à chaud — cf. `LIVE_ENGINE_FIELDS`
+   * dans `config.ts`). Utilisable dans n'importe quelle phase. `ghostCount`
+   * ajoute/retire réellement des fantômes de `state.ghosts` (les autres
+   * champs sont simplement relus au prochain tick/entrée, déjà lus « à la
+   * volée » depuis `config`).
+   */
+  updateConfig(patch: Partial<GameConfig>): void;
   /** État courant complet, prêt à être diffusé. Référence interne : ne pas muter. */
   getState(): GameState;
   /** Vide et renvoie le buffer d'événements accumulés depuis le dernier appel. */
@@ -125,6 +134,44 @@ export function createGame(
       ),
       moveProgress: 0,
     }));
+  }
+
+  /**
+   * Ajuste le nombre de fantômes en place vers `newCount`, sans toucher à
+   * ceux qui restent (pilotage à chaud de `ghostCount`, hors `reset()`). En
+   * retrait, tronque simplement le tableau (les derniers spawnés partent en
+   * premier). En ajout, réutilise `spawnGhosts`/`chooseNextTarget` comme
+   * `spawnGhostsAt()`, avec des ids décalés après le plus grand id existant
+   * pour ne jamais entrer en collision avec un fantôme déjà en jeu.
+   */
+  function adjustGhostCount(newCount: number): void {
+    const current = state.ghosts.length;
+    if (newCount === current) return;
+
+    if (newCount < current) {
+      state.ghosts = state.ghosts.slice(0, Math.max(0, newCount));
+      return;
+    }
+
+    const toAdd = newCount - current;
+    const nextId = state.ghosts.reduce((max, g) => Math.max(max, g.id), -1) + 1;
+    const spawned = spawnGhosts(toAdd, state.cols, state.rows, startZoneIndices, rng);
+    const newGhosts: GhostState[] = spawned.map((s, i) => ({
+      id: nextId + i,
+      pos: s.pos,
+      target: chooseNextTarget(
+        s.pos,
+        config.ghostBehavior,
+        state.character.pos,
+        state.cols,
+        state.rows,
+        state.revealed,
+        startZoneIndices,
+        rng,
+      ),
+      moveProgress: 0,
+    }));
+    state.ghosts = [...state.ghosts, ...newGhosts];
   }
 
   /** Victoire (J12) : 100 % des cases révélées, évaluée après chaque révélation. */
@@ -318,6 +365,12 @@ export function createGame(
         events.push({ type: 'revealed_changed', changes: changed.map((index) => ({ index, revealed: true })) });
       }
       events.push({ type: 'reset' });
+    },
+
+    updateConfig(patch: Partial<GameConfig>): void {
+      const ghostCountChanged = patch.ghostCount !== undefined && patch.ghostCount !== config.ghostCount;
+      config = { ...config, ...patch };
+      if (ghostCountChanged) adjustGhostCount(patch.ghostCount!);
     },
 
     getState(): GameState {

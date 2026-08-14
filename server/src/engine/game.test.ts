@@ -381,6 +381,185 @@ describe('createGame — mode Démocratie (J6)', () => {
   });
 });
 
+describe('createGame — updateConfig (pilotage à chaud, sans reset/launch)', () => {
+  let clock: number;
+
+  beforeEach(() => {
+    clock = 0;
+  });
+
+  it('movementMode chaos -> démocratie : le prochain handleInput vote au lieu de bouger', () => {
+    const g = createGame(config({ movementMode: 'chaos', chaosCooldownMs: 100 }), noRng, () => clock);
+    g.reset();
+    g.launch();
+    g.handleInput('up', 'Alex'); // encore en chaos : déplacement immédiat
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 4 });
+    g.drainEvents();
+
+    g.updateConfig({ movementMode: 'democratie' });
+    g.handleInput('up', 'Alex'); // désormais un simple vote, pas un déplacement
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 4 });
+    expect(g.getState().cooldownRemainingMs).toBe(0); // plus en mode chaos
+  });
+
+  it('movementMode démocratie -> chaos : le prochain handleInput bouge immédiatement', () => {
+    const g = createGame(config({ movementMode: 'democratie', democracyWindowMs: 300 }), noRng, () => clock);
+    g.reset();
+    g.launch();
+    g.tick(0); // ouvre la première fenêtre
+    g.drainEvents();
+
+    g.updateConfig({ movementMode: 'chaos', chaosCooldownMs: 100 });
+    g.handleInput('up', 'Alex');
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 4 }); // déplacement immédiat, plus de fenêtre à attendre
+  });
+
+  it("chaosCooldownMs modifié en cours de cooldown ne raccourcit pas le cooldown déjà engagé, s'applique au suivant", () => {
+    const g = createGame(config({ chaosCooldownMs: 1000 }), noRng, () => clock);
+    g.reset();
+    g.launch();
+    g.handleInput('up', 'Alex'); // clock=0 -> bouge, cooldownUntil=1000 (ancienne valeur)
+
+    g.updateConfig({ chaosCooldownMs: 100 });
+    clock = 150;
+    g.handleInput('up', 'Alex'); // toujours dans l'ancien cooldown (jusqu'à 1000) -> ignoré
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 4 });
+
+    clock = 1000;
+    g.handleInput('up', 'Alex'); // ancien cooldown écoulé -> bouge, nouveau cooldown = 100 ms
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 3 });
+
+    clock = 1099;
+    g.handleInput('up', 'Alex'); // dans le nouveau cooldown -> ignoré
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 3 });
+
+    clock = 1100;
+    g.handleInput('up', 'Alex'); // nouveau cooldown écoulé -> bouge
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 2 });
+  });
+
+  it("democracyWindowMs modifié en cours de fenêtre ne raccourcit pas la fenêtre déjà ouverte, s'applique à la suivante", () => {
+    const g = createGame(config({ movementMode: 'democratie', democracyWindowMs: 1000 }), noRng, () => clock);
+    g.reset();
+    g.launch();
+    g.tick(0); // ouvre la fenêtre (ferme à 1000, ancienne durée)
+    g.drainEvents();
+
+    g.updateConfig({ democracyWindowMs: 100 });
+    g.handleInput('up', 'Alex');
+    clock = 999;
+    g.tick(clock); // fenêtre encore ouverte (ancienne durée 1000)
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 5 });
+
+    clock = 1000;
+    g.tick(clock); // ferme l'ancienne fenêtre (up gagne), ouvre la nouvelle avec la durée mise à jour (close à 1100)
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 4 });
+
+    g.handleInput('down', 'Bob');
+    clock = 1099;
+    g.tick(clock); // nouvelle fenêtre (100 ms) pas encore fermée
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 4 });
+
+    clock = 1100;
+    g.tick(clock); // fermée -> down gagne
+    expect(g.getState().character.pos).toEqual({ col: 3, row: 5 });
+  });
+
+  it('ghostSpeed modifié en cours de partie est pris en compte dès le tick suivant', () => {
+    const rng = sequenceRng([0, 0, 0.26]);
+    const g = createGame(config({ gridCols: 10, gridRows: 10, ghostCount: 1, ghostSpeed: 1 }), rng, () => clock);
+    g.reset();
+    g.launch();
+    g.tick(0);
+    g.drainEvents();
+
+    g.updateConfig({ ghostSpeed: 5 }); // au lieu de 1 : franchit une case entière en 200 ms au lieu de 5x plus lentement
+    clock = 200;
+    g.tick(clock);
+    expect(g.getState().ghosts[0].moveProgress).toBeCloseTo(0); // une case pile franchie
+  });
+
+  it("ghostBehavior modifié en cours de partie s'applique au prochain re-ciblage (aleatoire -> extinction)", () => {
+    // Grille 5x5, torchRadius 0 : départ (2,4). rng : [0 -> spawn en (0,0) ;
+    // 0 -> cible initiale 'aleatoire' = up -> (0,4) ; 0 -> tirage 80/20 du
+    // RE-ciblage après bascule en 'extinction' (tente la branche extinction) ;
+    // 0.51 -> repli (seule case révélée = zone de départ, exclue) -> 'left'.
+    const rng = sequenceRng([0, 0, 0, 0.51]);
+    const g = createGame(
+      config({ gridCols: 5, gridRows: 5, torchRadius: 0, ghostCount: 1, ghostSpeed: 1, ghostBehavior: 'aleatoire' }),
+      rng,
+      () => clock,
+    );
+    g.reset();
+    expect(g.getState().ghosts[0]).toMatchObject({ pos: { col: 0, row: 0 }, target: { col: 0, row: 4 } });
+    g.launch();
+    g.tick(0);
+    g.drainEvents();
+
+    g.updateConfig({ ghostBehavior: 'extinction' });
+    clock = 1000; // franchit la case -> pos = (0,4) -> re-ciblage, désormais en 'extinction'
+    g.tick(clock);
+    // Repli 'extinction' (pas 'aleatoire', qui n'aurait consommé qu'un seul
+    // tirage rng et donné 'up' -> (0,3)) : deux tirages, direction 'left'.
+    expect(g.getState().ghosts[0]).toMatchObject({ pos: { col: 0, row: 4 }, target: { col: 4, row: 4 } });
+  });
+
+  it('updateConfig fonctionne même avant tout reset (phase idle)', () => {
+    const rng = sequenceRng([0, 0]);
+    const g = createGame(config({ gridCols: 10, gridRows: 10, ghostCount: 0 }), rng, () => clock);
+    expect(g.getState().phase).toBe('idle');
+    expect(g.getState().ghosts).toEqual([]);
+
+    g.updateConfig({ ghostCount: 1 });
+    expect(g.getState().ghosts).toHaveLength(1);
+  });
+
+  it('ghostCount augmenté en cours de partie ajoute des fantômes sans toucher aux existants', () => {
+    const rng = sequenceRng([0, 0.1, 0.2, 0.9]);
+    const g = createGame(config({ gridCols: 10, gridRows: 10, ghostCount: 2 }), rng, () => clock);
+    g.reset();
+    g.launch();
+    const before = g.getState().ghosts;
+    expect(before).toHaveLength(2);
+    const beforeIds = before.map((gh) => gh.id);
+
+    g.updateConfig({ ghostCount: 5 });
+    const after = g.getState().ghosts;
+    expect(after).toHaveLength(5);
+    expect(after.slice(0, 2)).toEqual(before); // les fantômes déjà en jeu ne sont pas touchés
+    const newIds = after.slice(2).map((gh) => gh.id);
+    expect(new Set([...beforeIds, ...newIds]).size).toBe(5); // aucun id en double
+    expect(Math.min(...newIds)).toBeGreaterThan(Math.max(...beforeIds)); // ids décalés après les existants
+  });
+
+  it('ghostCount réduit en cours de partie retire les derniers fantômes, sans toucher les autres', () => {
+    let seed = 1;
+    const rng = (): number => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    const g = createGame(config({ gridCols: 10, gridRows: 10, ghostCount: 5 }), rng, () => clock);
+    g.reset();
+    g.launch();
+    expect(g.getState().ghosts).toHaveLength(5);
+    const firstTwo = g.getState().ghosts.slice(0, 2);
+
+    g.updateConfig({ ghostCount: 2 });
+    expect(g.getState().ghosts).toEqual(firstTwo);
+  });
+
+  it('ghostCount ramené à 0 vide le tableau de fantômes', () => {
+    const rng = sequenceRng([0, 0]);
+    const g = createGame(config({ gridCols: 10, gridRows: 10, ghostCount: 1 }), rng, () => clock);
+    g.reset();
+    g.launch();
+    expect(g.getState().ghosts).toHaveLength(1);
+
+    g.updateConfig({ ghostCount: 0 });
+    expect(g.getState().ghosts).toEqual([]);
+  });
+});
+
 function sequenceRng(values: number[]): () => number {
   let i = 0;
   return () => values[i++ % values.length];

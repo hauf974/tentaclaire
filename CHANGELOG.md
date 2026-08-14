@@ -28,3 +28,6 @@ Suite Playwright multi-contextes (scénario nominal + cinq scénarios secondaire
 
 ## Lot 8 — Retours de revue n°1
 Trois retours de la revue humaine du 04/08/2026 : troisième comportement de fantôme « Extinction des feux » (attiré par la case révélée la plus proche), polices du panneau latéral de l'écran géant agrandies de 80 % pour la lisibilité à distance de bar, point de départ du personnage configurable dans l'admin (9 positions fixes plus une option « Aléatoire »).
+
+## Lot 9 — Pilotage à chaud (déplacements et fantômes)
+Demande directe d'Arnaud : les réglages `movementMode`/`chaosCooldownMs`/`democracyWindowMs` (joueurs) et `ghostCount`/`ghostSpeed`/`ghostBehavior` (fantômes) s'appliquent désormais immédiatement à la partie en cours depuis le dashboard admin, sans reload de page ni attendre le prochain Lancer/Réinitialiser. Nouvelle méthode `GameEngine.updateConfig()` (moteur), champs `LIVE_ENGINE_FIELDS` (`server/src/config.ts`). Les autres réglages (grille, thème, point de départ, collision, rayon de torche) restent appliqués au prochain reset/launch (C6), volontairement inchangé pour ne pas risquer de désynchroniser un plateau déjà en cours.

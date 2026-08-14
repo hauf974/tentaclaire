@@ -26,8 +26,40 @@ const START_POSITIONS: readonly StartPosition[] = [
   'random',
 ];
 
-/** Champs appliqués immédiatement (C6) ; les autres attendent le prochain reset/launch. */
-const IMMEDIATE_FIELDS: readonly (keyof GameConfig)[] = ['theme', 'showGridOnFog', 'showGridOnRevealed', 'qrUrl'];
+/**
+ * Champs appliqués immédiatement (C6) : déclenchent `config_changed` (diffusé
+ * aux clients dès l'enregistrement, cf. `admin.ts`). Élargi (pilotage à
+ * chaud) aux champs de déplacement — `movementMode`, `chaosCooldownMs`,
+ * `democracyWindowMs` — car ils font partie de `PublicConfig` et pilotent le
+ * rendu de la manette (anneau de cooldown, libellé de vote). Les autres
+ * champs attendent le prochain reset/launch.
+ */
+const IMMEDIATE_FIELDS: readonly (keyof GameConfig)[] = [
+  'theme',
+  'showGridOnFog',
+  'showGridOnRevealed',
+  'qrUrl',
+  'movementMode',
+  'chaosCooldownMs',
+  'democracyWindowMs',
+];
+
+/**
+ * Champs adoptés par le moteur EN COURS de partie (pilotage à chaud), sans
+ * attendre le prochain reset/launch — cf. `GameEngine.updateConfig()`.
+ * Sous-ensemble volontairement restreint aux réglages joueurs et fantômes :
+ * les autres champs (grille, thème, point de départ, collision…) continuent
+ * de n'être adoptés qu'au prochain reset/launch (C6), pour ne pas risquer de
+ * désynchroniser un plateau déjà en cours.
+ */
+export const LIVE_ENGINE_FIELDS: readonly (keyof GameConfig)[] = [
+  'movementMode',
+  'chaosCooldownMs',
+  'democracyWindowMs',
+  'ghostCount',
+  'ghostSpeed',
+  'ghostBehavior',
+];
 
 type Validator = (value: unknown) => boolean;
 

@@ -100,7 +100,7 @@ describe('authentification et config admin (ticket 2.4)', () => {
     expect(built.configStore.get().gridCols).toBe(defaultGameConfig.gridCols);
   });
 
-  it('le thème est appliqué à chaud (config_changed diffusé), le nombre de fantômes seulement au reset', async () => {
+  it('le thème est appliqué à chaud (config_changed diffusé), le point de départ seulement au reset', async () => {
     uploadDir = createTempUploadDir();
     built = await buildServer({
       adminPassword: ADMIN_PASSWORD,
@@ -126,22 +126,67 @@ describe('authentification et config admin (ticket 2.4)', () => {
     const payload = await configChanged;
     expect(payload.config.theme).toBe('neon');
 
-    // Nombre de fantômes : appliqué à la config, mais le moteur en cours (3 fantômes) ne change pas.
+    // Point de départ : pas dans LIVE_ENGINE_FIELDS -> appliqué à la config, mais le moteur en cours ne change pas.
     built.game.reset();
-    expect(built.game.getState().ghosts).toHaveLength(3);
+    const before = built.game.getState().character.pos;
 
-    const ghostResponse = await built.app.inject({
+    const startPositionResponse = await built.app.inject({
       method: 'PUT',
       url: '/api/admin/config',
       headers: { cookie },
-      payload: { ghostCount: 10 },
+      payload: { startPosition: 'center' },
     });
-    expect(ghostResponse.statusCode).toBe(200);
-    expect(built.game.getState().ghosts).toHaveLength(3); // inchangé tant qu'il n'y a pas eu de reset
+    expect(startPositionResponse.statusCode).toBe(200);
+    expect(built.game.getState().character.pos).toEqual(before); // inchangé tant qu'il n'y a pas eu de reset
 
-    // Seul un reset (avec la config à jour) applique le nouveau nombre de fantômes.
+    // Seul un reset (avec la config à jour) applique le nouveau point de départ.
     built.game.reset(built.configStore.get());
-    expect(built.game.getState().ghosts).toHaveLength(10);
+    expect(built.game.getState().character.pos).toEqual({ col: 5, row: 5 }); // 'center' sur la grille 10x10 par défaut
+  });
+
+  it('ghostCount, ghostSpeed, ghostBehavior et movementMode sont appliqués à chaud, sans reset (pilotage à chaud)', async () => {
+    uploadDir = createTempUploadDir();
+    built = await buildServer({
+      adminPassword: ADMIN_PASSWORD,
+      config: { ...defaultGameConfig, gridCols: 10, gridRows: 10, ghostCount: 3 },
+      uploadDir,
+    });
+    const cookie = await login(built);
+
+    built.game.reset();
+    built.game.launch();
+    expect(built.game.getState().ghosts).toHaveLength(3);
+
+    // Augmenter le nombre de fantômes : appliqué tout de suite au moteur en cours.
+    const growResponse = await built.app.inject({
+      method: 'PUT',
+      url: '/api/admin/config',
+      headers: { cookie },
+      payload: { ghostCount: 7 },
+    });
+    expect(growResponse.statusCode).toBe(200);
+    expect(built.game.getState().ghosts).toHaveLength(7); // pas besoin d'un reset
+
+    // Réduire : tout de suite aussi.
+    const shrinkResponse = await built.app.inject({
+      method: 'PUT',
+      url: '/api/admin/config',
+      headers: { cookie },
+      payload: { ghostCount: 2 },
+    });
+    expect(shrinkResponse.statusCode).toBe(200);
+    expect(built.game.getState().ghosts).toHaveLength(2);
+
+    // Mode démocratie : appliqué tout de suite, plus besoin d'attendre le prochain lancement.
+    const modeResponse = await built.app.inject({
+      method: 'PUT',
+      url: '/api/admin/config',
+      headers: { cookie },
+      payload: { movementMode: 'democratie' },
+    });
+    expect(modeResponse.statusCode).toBe(200);
+    built.game.handleInput('up', 'Alex');
+    expect(built.game.getState().cooldownRemainingMs).toBe(0); // plus en mode chaos -> plus de cooldown
   });
 
   it("Lancer depuis 'reset' adopte un changement de config fait après Réinitialiser (ticket 5.2, C6)", async () => {

@@ -1,6 +1,6 @@
 import { defaultGameConfig } from '@tentaclaire/shared';
 import { describe, expect, it } from 'vitest';
-import { createConfigStore, toPublicConfig } from './config.js';
+import { createConfigStore, LIVE_ENGINE_FIELDS, toPublicConfig } from './config.js';
 
 describe('createConfigStore', () => {
   it('get() renvoie la config par défaut au départ', () => {
@@ -50,6 +50,27 @@ describe('createConfigStore', () => {
     const store = createConfigStore();
     const result = store.update({ ghostCount: 5, showGridOnFog: false });
     expect(result.immediateChange).toBe(true);
+  });
+
+  it('pilotage à chaud (déplacements) : movementMode/chaosCooldownMs/democracyWindowMs sont C6-immédiats', () => {
+    const store = createConfigStore();
+    expect(store.update({ movementMode: 'democratie' }).immediateChange).toBe(true);
+    expect(store.update({ chaosCooldownMs: 800 }).immediateChange).toBe(true);
+    expect(store.update({ democracyWindowMs: 600 }).immediateChange).toBe(true);
+  });
+
+  it('pilotage à chaud (fantômes) : ghostCount/ghostSpeed/ghostBehavior appliqués (config), mais pas C6-immédiats (hors PublicConfig)', () => {
+    const store = createConfigStore();
+    expect(store.update({ ghostCount: 8 }).immediateChange).toBe(false);
+    expect(store.update({ ghostSpeed: 2 }).immediateChange).toBe(false);
+    expect(store.update({ ghostBehavior: 'traque' }).immediateChange).toBe(false);
+    expect(store.get()).toMatchObject({ ghostCount: 8, ghostSpeed: 2, ghostBehavior: 'traque' });
+  });
+
+  it('LIVE_ENGINE_FIELDS liste exactement les six champs de pilotage à chaud du moteur', () => {
+    expect([...LIVE_ENGINE_FIELDS].sort()).toEqual(
+      ['movementMode', 'chaosCooldownMs', 'democracyWindowMs', 'ghostCount', 'ghostSpeed', 'ghostBehavior'].sort(),
+    );
   });
 
   it('valide torchRadius comme 0|1|2 uniquement', () => {

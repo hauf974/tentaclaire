@@ -5,8 +5,24 @@ import { AdminApiError, getConfig, updateConfig } from './useAdminApi.js';
 const SAVE_DEBOUNCE_MS = 400;
 const SAVED_FLASH_MS = 1500;
 
-/** Champs C6-immédiats (cf. server/src/config.ts) : appliqués tout de suite, jamais "en attente". */
-const IMMEDIATE_FIELDS: ReadonlySet<keyof GameConfig> = new Set(['theme', 'showGridOnFog', 'showGridOnRevealed', 'qrUrl']);
+/**
+ * Champs appliqués tout de suite (cf. IMMEDIATE_FIELDS/LIVE_ENGINE_FIELDS,
+ * server/src/config.ts) : jamais "en attente du prochain lancement". Inclut
+ * les quatre champs C6 d'origine (visuels) ainsi que les réglages de
+ * déplacement et de fantômes (pilotage à chaud).
+ */
+const IMMEDIATE_FIELDS: ReadonlySet<keyof GameConfig> = new Set([
+  'theme',
+  'showGridOnFog',
+  'showGridOnRevealed',
+  'qrUrl',
+  'movementMode',
+  'chaosCooldownMs',
+  'democracyWindowMs',
+  'ghostCount',
+  'ghostSpeed',
+  'ghostBehavior',
+]);
 
 export interface UseAdminConfigResult {
   config: Ref<GameConfig | null>;

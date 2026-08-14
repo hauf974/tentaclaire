@@ -128,3 +128,11 @@ Trois retours de la revue humaine du 04/08/2026 (décisions R1–R3), mis en œu
 **Correctifs post-déploiement (05/08/2026, retour utilisateur)** — commit `20dd42e` : (1) la zone révélée d'office au départ n'attire plus les fantômes en `extinction` (elle aurait sinon systématiquement attiré les fantômes sur le point d'apparition dès le début de partie, `startZoneIndices` désormais exclue de `chooseNextTarget`) ; (2) le point de départ `random` tire désormais une case uniforme sur toute la grille (`resolveStartingPosition`), et non plus parmi les 9 positions fixes ; (3) la radio « Aléatoire » de l'admin reprend le style exact des 9 autres (pictogramme avec « ? »). 230 tests verts, suite Docker (unit + e2e) verte, redéployé sur `serveur_dev`.
 
 Tous les lots (0 à 8) sont terminés.
+
+## Lot 9 — Pilotage à chaud (déplacements et fantômes)
+
+| Ticket | Description | Statut | Date | Commit |
+|--------|--------------|--------|------|--------|
+| 9.1 | Pilotage à chaud joueurs/fantômes — `GameEngine.updateConfig()`, `LIVE_ENGINE_FIELDS`, ajustement live de `ghostCount` sans reset | Terminé | 2026-08-14 | `35c2552` |
+
+Demande directe d'Arnaud (hors lot planifié) : pouvoir modifier `movementMode`/`chaosCooldownMs`/`democracyWindowMs` (joueurs) et `ghostCount`/`ghostSpeed`/`ghostBehavior` (fantômes) à la volée depuis le dashboard admin, sans reload de page ni attendre le prochain Lancer/Réinitialiser. Architecture déjà prête côté protocole temps réel (Socket.IO, `state_delta`, `config_changed` déjà écoutés côté client) — seule la logique serveur limitait ces six champs au régime C6 (« au prochain reset/launch »). `ghostCount` est le seul cas non trivial : les fantômes n'étaient spawnés qu'à `reset()` ; nouvelle fonction interne `adjustGhostCount()` qui ajoute (ids décalés après le maximum existant, jamais de collision) ou retire (troncature) des fantômes du moteur en cours, sans toucher à ceux déjà en jeu. `npm run lint` propre et suite complète verte (244 tests, dont 11 nouveaux ciblant précisément le pilotage à chaud : bascule chaos/démocratie en cours de partie, non-rétroactivité d'un cooldown/fenêtre déjà engagé, vitesse/comportement des fantômes appliqués dès le tick suivant, ajout/retrait de fantômes sans perturber les autres, utilisable avant tout reset). Appliqué et validé sur `serveur_dev` avant push.

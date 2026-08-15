@@ -23,11 +23,30 @@
 // d'observation dédié, rôle `screen`, suit `snapshot`/`state_delta` sans
 // consommer de "place joueur") :
 //   - 'random'  (défaut) : direction aléatoire, comportement historique.
+//   - 'sweep'   : balayage systématique ligne par ligne (façon tondeuse à
+//                 gazon — une ligne vers la droite, la suivante vers la
+//                 gauche, etc.), vers la première case non découverte
+//                 rencontrée dans cet ordre. C'est l'algorithme classique de
+//                 couverture complète d'une grille ouverte sans obstacle :
+//                 aucun angle mort, aucun retour en arrière inutile. À
+//                 essayer en premier si l'objectif est de révéler 100% de
+//                 l'image le plus vite possible.
 //   - 'nearest' : direction vers la case non découverte la plus proche
-//                 (distance de Manhattan, plateau ouvert sans obstacle).
+//                 (distance de Manhattan). Myope par nature : ne "voit" que
+//                 la case la plus proche à chaque instant, sans notion de
+//                 trajectoire globale — peut zigzaguer sans jamais couvrir
+//                 méthodiquement toute la grille. En cas d'égalité de
+//                 distance, la case est tirée au hasard parmi les
+//                 candidates à égalité (corrigé : la version précédente
+//                 gardait systématiquement la première trouvée en parcourant
+//                 la grille ligne par ligne depuis le haut-gauche, ce qui
+//                 biaisait fortement vers "haut" puis "gauche" et faisait
+//                 foncer le personnage vers le coin haut-gauche au lieu de
+//                 balayer la grille).
 //   - 'density' : direction vers le bloc de la grille (partitionnée en
 //                 blocs ~carrés) contenant le plus de cases non découvertes
 //                 — approxime "la zone la plus dense" sans clustering coûteux.
+//                 Comme 'nearest', reste myope à l'intérieur du bloc visé.
 // Le déplacement du personnage n'est PAS toroïdal (mur = immobile, contraire
 // aux fantômes) : la direction gagnante est un simple pas glouton vers la
 // cible, jamais un raccourci par le bord. Si la partie n'est pas `running`
@@ -35,12 +54,27 @@
 // sont simplement sans effet côté serveur — le script continue d'essayer,
 // prêt dès que l'admin clique "Lancer".
 //
-// Usage : node scripts/loadTest.mjs
+// Deux facteurs indépendants de la stratégie limitent souvent plus la
+// vitesse de révélation que le choix de l'algorithme :
+//   - En mode chaos, une seule entrée est retenue par `chaosCooldownMs`
+//     (les autres sont silencieusement ignorées côté moteur) — avoir 50
+//     bots qui votent la même direction n'accélère donc rien de plus qu'un
+//     seul bot : le goulot est le cooldown, pas le nombre de votants.
+//     `chaosCooldownMs` se pilote à chaud depuis /admin pendant le test
+//     (lot 9.1) pour l'accélérer sans relancer la partie.
+//   - `torchRadius` à 0 ne révèle que la case sur laquelle le personnage
+//     arrive : couvrir 100% exige de littéralement visiter chaque case.
+//     Un rayon plus large révèle une zone à chaque pas, ce qui accélère
+//     nettement la progression quelle que soit la stratégie — mais ce
+//     champ n'est pas pilotable à chaud, il faut le régler dans l'admin
+//     puis Réinitialiser/Lancer avant de démarrer le test.
+//
+// Usage : node loadTest.mjs
 // Variables d'environnement :
 //   LOAD_TEST_URL     (défaut http://localhost:3000)
 //   PLAYER_COUNT       (défaut 50)
 //   DURATION_MS        (optionnel — sans elle, tourne jusqu'à Ctrl+C)
-//   BOT_STRATEGY       (défaut 'random') : 'random' | 'nearest' | 'density'
+//   BOT_STRATEGY       (défaut 'random') : 'random' | 'sweep' | 'nearest' | 'density'
 //   INPUT_INTERVAL_MS  (défaut 500, ~2 inputs/s par joueur)
 //   STATS_INTERVAL_MS  (défaut 5000 — affichage périodique en direct)
 
@@ -58,7 +92,7 @@ const DIRECTIONS = ['up', 'down', 'left', 'right'];
 // ne pas les compter comme des déconnexions "inattendues" dans le rapport.
 let shuttingDown = false;
 
-// ---------- Pilotage intelligent (BOT_STRATEGY 'nearest' / 'density') ----------
+// ---------- Pilotage intelligent (BOT_STRATEGY 'sweep' / 'nearest' / 'density') ----------
 
 /** Pas glouton (non-toroïdal, contrairement aux fantômes) vers `to` depuis `from`. */
 function greedyDirectionToward(from, to) {
@@ -69,21 +103,48 @@ function greedyDirectionToward(from, to) {
   return dRow > 0 ? 'down' : 'up';
 }
 
+/**
+ * Balayage façon tondeuse à gazon : ligne 0 de gauche à droite, ligne 1 de
+ * droite à gauche, etc. Cible la première case non découverte rencontrée
+ * dans cet ordre — couverture complète sans angle mort ni retour arrière
+ * inutile sur une grille ouverte sans obstacle.
+ */
+function firstUnrevealedInSweepOrder(state) {
+  const { cols, rows, revealed } = state;
+  for (let row = 0; row < rows; row++) {
+    const leftToRight = row % 2 === 0;
+    if (leftToRight) {
+      for (let col = 0; col < cols; col++) {
+        if (!revealed[row * cols + col]) return { col, row };
+      }
+    } else {
+      for (let col = cols - 1; col >= 0; col--) {
+        if (!revealed[row * cols + col]) return { col, row };
+      }
+    }
+  }
+  return null;
+}
+
+/** Case non découverte la plus proche (Manhattan) ; égalités tirées au hasard (pas de biais haut-gauche). */
 function nearestUnrevealedTarget(state) {
   const { cols, rows, revealed, character } = state;
-  let best = null;
   let bestDist = Infinity;
+  let candidates = [];
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       if (revealed[row * cols + col]) continue;
       const dist = Math.abs(col - character.pos.col) + Math.abs(row - character.pos.row);
       if (dist < bestDist) {
         bestDist = dist;
-        best = { col, row };
+        candidates = [{ col, row }];
+      } else if (dist === bestDist) {
+        candidates.push({ col, row });
       }
     }
   }
-  return best;
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 /** Cible le centre du bloc (grille partitionnée en blocs ~carrés) contenant le plus de cases non découvertes. */
@@ -131,6 +192,7 @@ function densestUnrevealedTarget(state) {
 function computeBestDirection(state) {
   if (!state || state.phase !== 'running') return null;
   const target =
+    BOT_STRATEGY === 'sweep' ? firstUnrevealedInSweepOrder(state) :
     BOT_STRATEGY === 'nearest' ? nearestUnrevealedTarget(state) :
     BOT_STRATEGY === 'density' ? densestUnrevealedTarget(state) :
     null;

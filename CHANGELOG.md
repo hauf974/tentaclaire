@@ -31,3 +31,6 @@ Trois retours de la revue humaine du 04/08/2026 : troisième comportement de fan
 
 ## Lot 9 — Pilotage à chaud et test de charge intelligent
 Pilotage en direct des réglages joueurs (`movementMode`, `chaosCooldownMs`, `democracyWindowMs`) et fantômes (`ghostCount`, `ghostSpeed`, `ghostBehavior`) depuis le dashboard admin, sans reload de page ni attendre le prochain Lancer/Réinitialiser (9.1). Test de charge (`scripts/loadTest.mjs`) étendu avec un pilotage intelligent des joueurs simulés — balayage systématique de la grille, case non découverte la plus proche, ou zone la plus dense en cases non découvertes, au lieu d'une direction aléatoire — et débranché de toute route admin pour rester utilisable en parallèle d'un pilotage manuel en direct, interruptible au Ctrl+C à tout moment (9.2). Correctif d'un biais de la stratégie « case la plus proche » qui faisait foncer les joueurs simulés vers un coin de la grille au lieu de la balayer, et ajout d'une stratégie de balayage systématique (9.3).
+
+## Lot 10 — Persistance du brouillard à la défaite
+À la défaite par expiration du timer (« Trop tard ! »), le plateau reste désormais figé tel quel — les cases déjà révélées le restent, celles dans le brouillard aussi — au lieu d'être systématiquement recouvert à 100 %. `Réinitialiser` continue de repartir d'un brouillard entièrement recouvert, sans changement.

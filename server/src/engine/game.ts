@@ -292,14 +292,10 @@ export function createGame(
       state.timerRemainingMs = Math.max(0, state.timerRemainingMs - elapsed);
       if (state.timerRemainingMs === 0) {
         state.phase = 'defeat';
-        const changes = setCells(
-          state.revealed,
-          state.revealed.map((_, index) => index),
-          false,
-        );
-        if (changes.length > 0) {
-          events.push({ type: 'revealed_changed', changes: changes.map((index) => ({ index, revealed: false })) });
-        }
+        // Le plateau reste figé tel quel (cases révélées restent révélées,
+        // les autres restent dans le brouillard) : pas de recouvrement.
+        // `reset()`/`initializeBoard()` restent seuls responsables de
+        // remettre le brouillard à 100 % (jamais `tick()`).
         events.push({ type: 'defeat' });
         return; // arrêt immédiat (J13) : rien d'autre n'avance ce tick
       }

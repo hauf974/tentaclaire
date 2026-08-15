@@ -142,29 +142,44 @@ describe('createGame — phases et timer', () => {
     expect(game.getState().timerRemainingMs).toBe(frozen);
   });
 
-  it('défaite pile à 0 : brouillard remis à 100 %, phase figée', () => {
+  it('défaite pile à 0 : le plateau reste figé tel quel (rien de recouvert), phase figée', () => {
     const g = createGame(config({ timerSeconds: 1 }), noRng, () => clock);
     g.reset();
     g.launch();
     clock = 1000;
     g.tick(clock); // référence initiale
+    g.handleInput('up', 'Alex'); // révèle au moins une case de plus que la zone de départ
+    g.drainEvents(); // vide le buffer (character_moved/revealed_changed de ce déplacement)
+
+    const revealedBeforeDefeat = [...g.getState().revealed];
+    expect(revealedBeforeDefeat.some(Boolean)).toBe(true); // au moins une case révélée à figer
+    expect(revealedBeforeDefeat.every(Boolean)).toBe(false); // pas toute la grille non plus (cas dégénéré)
+
     clock = 1500;
     g.tick(clock);
     expect(g.getState().timerRemainingMs).toBe(500);
     expect(g.getState().phase).toBe('running');
+    expect(g.getState().revealed).toEqual(revealedBeforeDefeat); // toujours inchangé pendant que ça tourne
 
     clock = 2000;
     g.tick(clock);
     expect(g.getState().timerRemainingMs).toBe(0);
     expect(g.getState().phase).toBe('defeat');
-    expect(g.getState().revealed.some(Boolean)).toBe(false);
-    expect(g.drainEvents().map((e) => e.type)).toContain('defeat');
+    // Ni recouvert (cases révélées avant la défaite toujours révélées), ni
+    // révélé en plus (cases dans le brouillard avant restent dans le brouillard) :
+    // le plateau au moment de la défaite est identique à juste avant.
+    expect(g.getState().revealed).toEqual(revealedBeforeDefeat);
+    const eventsAtDefeat = g.drainEvents().map((e) => e.type);
+    expect(eventsAtDefeat).toContain('defeat');
+    // Aucun `revealed_changed` émis par la défaite elle-même : rien n'a changé.
+    expect(eventsAtDefeat).not.toContain('revealed_changed');
 
     // la partie reste figée après la défaite, même avec un nouveau tick
     clock = 5000;
     g.tick(clock);
     expect(g.getState().timerRemainingMs).toBe(0);
     expect(g.getState().phase).toBe('defeat');
+    expect(g.getState().revealed).toEqual(revealedBeforeDefeat);
   });
 });
 

@@ -77,11 +77,16 @@ describe('createGame — intégration bout en bout', () => {
     expect(game.getState().phase).toBe('running');
     expect(game.getState().timerRemainingMs).toBe(500);
 
+    // Ce qui a été révélé jusqu'ici (zone de départ) doit rester révélé après
+    // la défaite, sans être recouvert ni complété.
+    const revealedBeforeDefeat = [...game.getState().revealed];
+    expect(revealedBeforeDefeat.some(Boolean)).toBe(true);
+
     clock = 1000;
     game.tick(clock); // timer à 0 -> défaite
     expect(game.getState().phase).toBe('defeat');
     expect(game.getState().timerRemainingMs).toBe(0);
-    expect(game.getState().revealed.every((cell) => cell === false)).toBe(true);
+    expect(game.getState().revealed).toEqual(revealedBeforeDefeat); // plateau figé tel quel, pas recouvert
     expect(game.drainEvents().some((e) => e.type === 'defeat')).toBe(true);
 
     // Figé après la défaite.
